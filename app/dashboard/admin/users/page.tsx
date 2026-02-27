@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import ConfirmDialog from '@/components/ConfirmDialog'
 import { addUser, deleteUser, getAllUsers, putUser } from '@/lib/db'
 import { COMPANY_EMAIL_ERROR, isAllowedCompanyEmail, normalizeEmail } from '@/lib/email-domain'
 import './users.css'
@@ -24,6 +25,19 @@ export default function ManageUsersPage() {
   const [message, setMessage] = useState({ text: '', type: '' })
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean
+    title: string
+    message: string
+    variant: 'danger' | 'warning' | 'default'
+    onConfirm: () => void
+  }>({
+    open: false,
+    title: 'Confirm Action',
+    message: '',
+    variant: 'warning',
+    onConfirm: () => {},
+  })
 
   const [formData, setFormData] = useState({
     email: '',
@@ -101,12 +115,20 @@ export default function ManageUsersPage() {
       createdAt: new Date().toISOString(),
     }
 
-    await addUser(newUser)
-    await loadUsers()
-
-    showToast('User added successfully', 'success')
-    setFormData({ email: '', password: '', confirmPassword: '', role: 'hr' })
-    setShowAddForm(false)
+    setConfirmState({
+      open: true,
+      title: 'Create User',
+      message: `Create user ${normalizedEmail} as ${formData.role.toUpperCase()}?`,
+      variant: 'default',
+      onConfirm: async () => {
+        setConfirmState((prev) => ({ ...prev, open: false }))
+        await addUser(newUser)
+        await loadUsers()
+        showToast('User added successfully', 'success')
+        setFormData({ email: '', password: '', confirmPassword: '', role: 'hr' })
+        setShowAddForm(false)
+      },
+    })
   }
 
   const handleDeleteUser = async (id: number, email: string) => {
@@ -115,13 +137,18 @@ export default function ManageUsersPage() {
       return
     }
 
-    if (!confirm(`Are you sure you want to delete user ${email}?`)) {
-      return
-    }
-
-    await deleteUser(id)
-    await loadUsers()
-    showToast('User deleted successfully', 'success')
+    setConfirmState({
+      open: true,
+      title: 'Delete User',
+      message: `Delete user ${email}? This action cannot be undone.`,
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmState((prev) => ({ ...prev, open: false }))
+        await deleteUser(id)
+        await loadUsers()
+        showToast('User deleted successfully', 'success')
+      },
+    })
   }
 
   const handleResetPassword = async (userId: number) => {
@@ -305,6 +332,15 @@ export default function ManageUsersPage() {
 
         <div className="table-summary">Showing {filteredUsers.length} of {users.length} users</div>
       </div>
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState((prev) => ({ ...prev, open: false }))}
+      />
     </div>
   )
 }

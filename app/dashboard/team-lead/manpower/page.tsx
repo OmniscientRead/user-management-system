@@ -3,6 +3,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import ConfirmDialog from '@/components/ConfirmDialog'
 import { addManpowerRequest, getAllManpowerRequests } from '@/lib/db'
 import { POSITION_OPTIONS } from '@/lib/positions'
 import '../team-lead-dashboard.css'
@@ -41,6 +42,19 @@ export default function TeamLeadManpowerPage() {
     pdfFile: null as File | null,
   })
   const [successMessage, setSuccessMessage] = useState('')
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean
+    title: string
+    message: string
+    variant: 'danger' | 'warning' | 'default'
+    onConfirm: () => void
+  }>({
+    open: false,
+    title: 'Confirm Action',
+    message: '',
+    variant: 'warning',
+    onConfirm: () => {},
+  })
 
   useEffect(() => {
     const initialize = async () => {
@@ -98,9 +112,7 @@ export default function TeamLeadManpowerPage() {
     }))
   }
 
-  const handleSubmitRequest = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-
+  const submitRequest = () => {
     if (!user) {
       alert('User session not found. Please login again.')
       return
@@ -158,6 +170,21 @@ export default function TeamLeadManpowerPage() {
     }
 
     reader.readAsDataURL(formData.pdfFile)
+  }
+
+  const handleSubmitRequest = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+
+    setConfirmState({
+      open: true,
+      title: 'Submit Manpower Request',
+      message: 'Submit this manpower request now?',
+      variant: 'default',
+      onConfirm: () => {
+        setConfirmState((prev) => ({ ...prev, open: false }))
+        submitRequest()
+      },
+    })
   }
 
   if (!user) return <div>Loading...</div>
@@ -369,6 +396,15 @@ export default function TeamLeadManpowerPage() {
           </table>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState((prev) => ({ ...prev, open: false }))}
+      />
     </div>
   )
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import ConfirmDialog from '@/components/ConfirmDialog'
 import { deleteAssignment, getAllAssignments, putAssignment } from '@/lib/db'
 import './assignments.css'
 
@@ -27,6 +28,19 @@ export default function AdminAssignmentsPage() {
   const [message, setMessage] = useState({ text: '', type: '' })
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean
+    title: string
+    message: string
+    variant: 'danger' | 'warning' | 'default'
+    onConfirm: () => void
+  }>({
+    open: false,
+    title: 'Confirm Action',
+    message: '',
+    variant: 'warning',
+    onConfirm: () => {},
+  })
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user')
@@ -51,15 +65,22 @@ export default function AdminAssignmentsPage() {
   }
 
   const handleCancelAssignment = async (id: number) => {
-    if (!confirm('Are you sure you want to cancel this assignment?')) return
+    setConfirmState({
+      open: true,
+      title: 'Cancel Assignment',
+      message: 'Cancel this assignment? The applicant will no longer be active.',
+      variant: 'warning',
+      onConfirm: async () => {
+        setConfirmState((prev) => ({ ...prev, open: false }))
+        const target = assignments.find((a) => a.id === id)
+        if (!target) return
 
-    const target = assignments.find((a) => a.id === id)
-    if (!target) return
-
-    await putAssignment({ ...target, status: 'cancelled' })
-    await loadAssignments()
-    setMessage({ text: 'Assignment cancelled', type: 'success' })
-    setTimeout(() => setMessage({ text: '', type: '' }), 3000)
+        await putAssignment({ ...target, status: 'cancelled' })
+        await loadAssignments()
+        setMessage({ text: 'Assignment cancelled', type: 'success' })
+        setTimeout(() => setMessage({ text: '', type: '' }), 3000)
+      },
+    })
   }
 
   const handleCompleteAssignment = async (id: number) => {
@@ -77,12 +98,19 @@ export default function AdminAssignmentsPage() {
   }
 
   const handleDeleteAssignment = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this assignment record?')) return
-
-    await deleteAssignment(id)
-    await loadAssignments()
-    setMessage({ text: 'Assignment deleted', type: 'success' })
-    setTimeout(() => setMessage({ text: '', type: '' }), 3000)
+    setConfirmState({
+      open: true,
+      title: 'Delete Assignment',
+      message: 'Delete this assignment record? This action cannot be undone.',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmState((prev) => ({ ...prev, open: false }))
+        await deleteAssignment(id)
+        await loadAssignments()
+        setMessage({ text: 'Assignment deleted', type: 'success' })
+        setTimeout(() => setMessage({ text: '', type: '' }), 3000)
+      },
+    })
   }
 
   const filteredAssignments = assignments.filter((a) => {
@@ -223,6 +251,15 @@ export default function AdminAssignmentsPage() {
           </table>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState((prev) => ({ ...prev, open: false }))}
+      />
     </div>
   )
 }

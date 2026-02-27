@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import ConfirmDialog from '@/components/ConfirmDialog'
 import {
   addApplicant,
   claimApplicant,
@@ -14,7 +15,7 @@ import {
   getSettings,
   updateApplicantStatus,
 } from '@/lib/db'
-import { getPdfViewerSrc } from '@/lib/pdf'
+import { getPdfObjectUrl } from '@/lib/pdf'
 import { POSITION_OPTIONS } from '@/lib/positions'
 import './applicants.css'
 
@@ -50,6 +51,20 @@ export default function AdminApplicantsPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null)
   const [showResume, setShowResume] = useState(false)
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean
+    title: string
+    message: string
+    variant: 'danger' | 'warning' | 'default'
+    onConfirm: () => void
+  }>({
+    open: false,
+    title: 'Confirm Action',
+    message: '',
+    variant: 'warning',
+    onConfirm: () => {},
+  })
+  const [resumeUrl, setResumeUrl] = useState('')
   const [showAddForm, setShowAddForm] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
@@ -129,20 +144,25 @@ export default function AdminApplicantsPage() {
   }
 
   const handleDeleteApplicant = async (id: number, name: string) => {
-    if (!confirm(`Are you sure you want to delete applicant "${name}"?`)) {
-      return
-    }
+    setConfirmState({
+      open: true,
+      title: 'Delete Applicant',
+      message: `Delete applicant "${name}"? This action cannot be undone.`,
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmState((prev) => ({ ...prev, open: false }))
+        await deleteApplicant(id)
 
-    await deleteApplicant(id)
+        const assignments = await getAllAssignments()
+        const assignmentsToDelete = assignments.filter((a: { applicantId: number }) => a.applicantId === id)
+        for (const assignment of assignmentsToDelete) {
+          await deleteAssignment(Number(assignment.id))
+        }
 
-    const assignments = await getAllAssignments()
-    const assignmentsToDelete = assignments.filter((a: { applicantId: number }) => a.applicantId === id)
-    for (const assignment of assignmentsToDelete) {
-      await deleteAssignment(Number(assignment.id))
-    }
-
-    await loadData()
-    showToast('Applicant deleted successfully', 'success')
+        await loadData()
+        showToast('Applicant deleted successfully', 'success')
+      },
+    })
   }
 
   const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -209,41 +229,50 @@ export default function AdminApplicantsPage() {
     setIsSubmitting(true)
 
     try {
-      const [resumeData, pictureData] = await Promise.all([
-        fileToBase64(formData.resume),
-        fileToBase64(formData.picture),
-      ])
+      setConfirmState({
+        open: true,
+        title: 'Add Applicant',
+        message: 'Add this applicant now?',
+        variant: 'default',
+        onConfirm: async () => {
+          setConfirmState((prev) => ({ ...prev, open: false }))
+          const [resumeData, pictureData] = await Promise.all([
+            fileToBase64(formData.resume),
+            fileToBase64(formData.picture),
+          ])
 
-      await addApplicant({
-        id: Date.now(),
-        name: formData.name,
-        age: Number(formData.age),
-        education: formData.education,
-        course: formData.course,
-        positionAppliedFor: formData.positionAppliedFor,
-        collectionExperience: formData.collectionExperience,
-        referral: formData.referral,
-        resumeData,
-        pictureData,
-        status: 'pending',
-        addedDate: new Date().toISOString().split('T')[0],
-        addedBy: user?.email,
-      })
+          await addApplicant({
+            id: Date.now(),
+            name: formData.name,
+            age: Number(formData.age),
+            education: formData.education,
+            course: formData.course,
+            positionAppliedFor: formData.positionAppliedFor,
+            collectionExperience: formData.collectionExperience,
+            referral: formData.referral,
+            resumeData,
+            pictureData,
+            status: 'pending',
+            addedDate: new Date().toISOString().split('T')[0],
+            addedBy: user?.email,
+          })
 
-      setFormData({
-        name: '',
-        age: '',
-        education: '',
-        course: '',
-        positionAppliedFor: '',
-        collectionExperience: '',
-        referral: '',
-        resume: null,
-        picture: null,
+          setFormData({
+            name: '',
+            age: '',
+            education: '',
+            course: '',
+            positionAppliedFor: '',
+            collectionExperience: '',
+            referral: '',
+            resume: null,
+            picture: null,
+          })
+          setShowAddForm(false)
+          await loadData()
+          showToast('Applicant added successfully', 'success')
+        },
       })
-      setShowAddForm(false)
-      await loadData()
-      showToast('Applicant added successfully', 'success')
     } catch {
       showToast('Failed to add applicant', 'error')
     } finally {
@@ -255,6 +284,27 @@ export default function AdminApplicantsPage() {
     setSelectedApplicant(applicant)
     setShowResume(true)
   }
+
+  useEffect(() => {
+    if (!showResume || !selectedApplicant?.resumeData) {
+      if (resumeUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(resumeUrl)
+      }
+      setResumeUrl('')
+      return
+    }
+
+    const nextUrl = getPdfObjectUrl(selectedApplicant.resumeData)
+    if (resumeUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(resumeUrl)
+    }
+    setResumeUrl(nextUrl)
+    return () => {
+      if (nextUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(nextUrl)
+      }
+    }
+  }, [showResume, selectedApplicant?.resumeData])
 
   const filteredApplicants = applicants.filter((a) => {
     const matchesSearch =
@@ -522,7 +572,7 @@ export default function AdminApplicantsPage() {
               </div>
               <div className="modal-body">
                 {selectedApplicant.resumeData ? (
-                  <iframe src={getPdfViewerSrc(selectedApplicant.resumeData)} className="resume-viewer" title="Resume" />
+                  <iframe src={resumeUrl} className="resume-viewer" title="Resume" />
                 ) : (
                   <div className="no-resume">No resume uploaded</div>
                 )}
@@ -531,6 +581,15 @@ export default function AdminApplicantsPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState((prev) => ({ ...prev, open: false }))}
+      />
     </div>
   )
 }

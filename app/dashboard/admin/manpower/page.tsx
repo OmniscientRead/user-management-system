@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import ConfirmDialog from '@/components/ConfirmDialog'
 import {
   deleteManpowerRequest,
   getAllManpowerRequests,
@@ -48,6 +49,19 @@ export default function ManPowerPage() {
   const [editingTlId, setEditingTlId] = useState<number | null>(null)
   const [newLimit, setNewLimit] = useState<number>(5)
   const [message, setMessage] = useState({ text: '', type: '' })
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean
+    title: string
+    message: string
+    variant: 'danger' | 'warning' | 'default'
+    onConfirm: () => void
+  }>({
+    open: false,
+    title: 'Confirm Action',
+    message: '',
+    variant: 'warning',
+    onConfirm: () => {},
+  })
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user')
@@ -134,11 +148,18 @@ export default function ManPowerPage() {
   }
 
   const handleDeleteRequest = async (requestId: number | string) => {
-    if (!confirm('Delete this manpower request?')) return
-
-    await deleteManpowerRequest(Number(requestId))
-    await loadAllData()
-    showToast('Manpower request deleted', 'success')
+    setConfirmState({
+      open: true,
+      title: 'Delete Manpower Request',
+      message: 'Delete this manpower request? This action cannot be undone.',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmState((prev) => ({ ...prev, open: false }))
+        await deleteManpowerRequest(Number(requestId))
+        await loadAllData()
+        showToast('Manpower request deleted', 'success')
+      },
+    })
   }
 
   const handleUpdateTLLimit = async (tlId: number) => {
@@ -352,6 +373,15 @@ export default function ManPowerPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState((prev) => ({ ...prev, open: false }))}
+      />
     </div>
   )
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import ConfirmDialog from '@/components/ConfirmDialog'
 import { addApplicant } from '@/lib/db'
 import { POSITION_OPTIONS } from '@/lib/positions'
 import './add-applicant.css'
@@ -26,6 +27,19 @@ export default function AddApplicantPage() {
 
   const [message, setMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean
+    title: string
+    message: string
+    variant: 'danger' | 'warning' | 'default'
+    onConfirm: () => void
+  }>({
+    open: false,
+    title: 'Confirm Action',
+    message: '',
+    variant: 'warning',
+    onConfirm: () => {},
+  })
 
   useEffect(() => {
     // Check if user is HR
@@ -81,9 +95,8 @@ export default function AddApplicantPage() {
     }
   }
 
-  // Handle form submission
-  const handleSubmit = (e) => {
-    e.preventDefault()
+  const submitApplicant = () => {
+    setIsSubmitting(true)
 
     // Validation - check all fields are filled
     if (
@@ -98,10 +111,9 @@ export default function AddApplicantPage() {
       !formData.picture
     ) {
       setMessage('Please fill all required fields')
+      setIsSubmitting(false)
       return
     }
-
-    setIsSubmitting(true)
 
     // Convert files to base64 using Promises
     const readFile = (file) => {
@@ -161,9 +173,35 @@ export default function AddApplicantPage() {
       })
       .catch((error) => {
         console.error('Error adding applicant:', error)
-        setMessage('Error adding applicant. Please try again.')
+        const rawMessage = error instanceof Error ? error.message : ''
+        let friendlyMessage = 'Error adding applicant. Please try again.'
+        if (rawMessage) {
+          try {
+            const parsed = JSON.parse(rawMessage)
+            if (parsed?.error) friendlyMessage = parsed.error
+          } catch {
+            friendlyMessage = rawMessage
+          }
+        }
+        setMessage(friendlyMessage)
         setIsSubmitting(false)
       })
+  }
+
+  // Handle form submission
+  const handleSubmit = (e) => {
+    e.preventDefault()
+
+    setConfirmState({
+      open: true,
+      title: 'Add Applicant',
+      message: 'Add this applicant now?',
+      variant: 'default',
+      onConfirm: () => {
+        setConfirmState((prev) => ({ ...prev, open: false }))
+        submitApplicant()
+      },
+    })
   }
 
   if (!user) return <div>Loading...</div>
@@ -339,6 +377,15 @@ export default function AddApplicantPage() {
           </form>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState((prev) => ({ ...prev, open: false }))}
+      />
     </div>
   )
 }
