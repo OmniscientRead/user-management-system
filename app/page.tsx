@@ -124,14 +124,6 @@ export default function LoginPage() {
             {isLoading ? '⟳ Logging in...' : '➔  SIGN IN'}
           </button>
         </form>
-
-        <div className="demo-credentials">
-          <strong>Demo Credentials:</strong>
-          <p>Boss: boss@constantinolawoffice.com / boss123</p>
-          <p>HR: hr@constantinolawoffice.com / hr123</p>
-          <p>Team Lead: tl@constantinolawoffice.com / tl123</p>
-          <p>Admin: admin@constantinolawoffice.com / admin123</p>
-        </div>
       </div>
     </div>
   )
