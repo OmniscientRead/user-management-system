@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import { getAllUsers } from '@/lib/db'
+import { COMPANY_EMAIL_ERROR, isAllowedCompanyEmail, normalizeEmail } from '@/lib/email-domain'
 import './login.css'
 
 export default function LoginPage() {
@@ -13,31 +15,76 @@ export default function LoginPage() {
 
   const router = useRouter()
 
-  const DEMO_USERS = [
-    { email: 'boss@company.com', password: 'boss123', role: 'boss' },
-    { email: 'hr@company.com', password: 'hr123', role: 'hr' },
-    { email: 'tl@company.com', password: 'tl123', role: 'team-lead' },
-    { email: 'admin@company.com', password: 'admin123', role: 'admin' },
+  type LoginUser = {
+    email: string
+    password?: string
+    role: 'boss' | 'hr' | 'team-lead' | 'admin'
+  }
+
+  const DEMO_USERS: LoginUser[] = [
+    { email: 'boss@constantinolawoffice.com', password: 'boss123', role: 'boss' },
+    { email: 'hr@constantinolawoffice.com', password: 'hr123', role: 'hr' },
+    { email: 'tl@constantinolawoffice.com', password: 'tl123', role: 'team-lead' },
+    { email: 'admin@constantinolawoffice.com', password: 'admin123', role: 'admin' },
   ]
 
-  const handleLogin = (e) => {
+  const handleLogin = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
+
+    const normalizedEmail = normalizeEmail(email)
+    if (!isAllowedCompanyEmail(normalizedEmail)) {
+      setError(COMPANY_EMAIL_ERROR)
+      return
+    }
+
     setIsLoading(true)
 
-    setTimeout(() => {
-      const user = DEMO_USERS.find(
-        (u) => u.email === email && u.password === password
-      )
+    setTimeout(async () => {
+      try {
+        const storedUsers = (await getAllUsers()) as LoginUser[]
+        const mergedUsers: LoginUser[] = [...DEMO_USERS]
 
-      if (user) {
-        localStorage.setItem('user', JSON.stringify(user))
-        if (rememberMe) {
-          localStorage.setItem('rememberMe', JSON.stringify(user))
+      storedUsers.forEach((storedUser: LoginUser) => {
+        const existingIndex = mergedUsers.findIndex(
+          (demoUser) => normalizeEmail(demoUser.email) === normalizeEmail(storedUser.email)
+        )
+
+        if (existingIndex >= 0) {
+          mergedUsers[existingIndex] = {
+            ...mergedUsers[existingIndex],
+            ...storedUser,
+          }
+          return
         }
-        router.push(`/dashboard/${user.role}`)
-      } else {
-        setError('Invalid email or password')
+
+        mergedUsers.push(storedUser)
+      })
+
+        const user = mergedUsers.find(
+          (u) => normalizeEmail(u.email) === normalizedEmail && u.password === password
+        )
+
+        if (user) {
+          // Cleanup legacy localStorage payloads from the pre-backend version.
+          localStorage.removeItem('users')
+          localStorage.removeItem('applicants')
+          localStorage.removeItem('assignments')
+          localStorage.removeItem('manpowerRequests')
+          localStorage.removeItem('manPowerLimit')
+
+          localStorage.setItem('user', JSON.stringify(user))
+          if (rememberMe) {
+            localStorage.setItem('rememberMe', JSON.stringify(user))
+          }
+          router.push(`/dashboard/${user.role}`)
+        } else {
+          setError('Invalid email or password')
+          setIsLoading(false)
+        }
+      } catch (error) {
+        console.error('Login error:', error)
+        setError('Login failed. Please try again.')
         setIsLoading(false)
       }
     }, 500)
@@ -52,11 +99,10 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin}>
           <div className="form-group">
-            <label htmlFor="email">👤 Username</label>
             <input
               id="email"
-              type="text"
-              placeholder="Username"
+              type="email"
+              placeholder="name@constantinolawoffice.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -64,7 +110,6 @@ export default function LoginPage() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">🔒 Password</label>
             <input
               id="password"
               type="password"
@@ -75,16 +120,6 @@ export default function LoginPage() {
             />
           </div>
 
-          <div className="checkbox-group">
-            <input
-              id="rememberMe"
-              type="checkbox"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-            />
-            <label htmlFor="rememberMe">Remember me</label>
-          </div>
-
           <button type="submit" disabled={isLoading} className="login-button">
             {isLoading ? '⟳ Logging in...' : '➔  SIGN IN'}
           </button>
@@ -92,10 +127,10 @@ export default function LoginPage() {
 
         <div className="demo-credentials">
           <strong>Demo Credentials:</strong>
-          <p>Boss: boss@company.com / boss123</p>
-          <p>HR: hr@company.com / hr123</p>
-          <p>Team Lead: tl@company.com / tl123</p>
-          <p>Admin: admin@company.com / admin123</p>
+          <p>Boss: boss@constantinolawoffice.com / boss123</p>
+          <p>HR: hr@constantinolawoffice.com / hr123</p>
+          <p>Team Lead: tl@constantinolawoffice.com / tl123</p>
+          <p>Admin: admin@constantinolawoffice.com / admin123</p>
         </div>
       </div>
     </div>

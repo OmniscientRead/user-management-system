@@ -136,9 +136,12 @@ export default function HRResultsPage() {
                 <thead>
                   <tr>
                     <th>Name</th>
+                    <th>Position Applied</th>
+                    <th>Assigned TL</th>
                     <th>Age</th>
                     <th>Education</th>
                     <th>Course</th>
+                    <th>Position Applied</th>
                     <th>Experience</th>
                     <th>Referral</th>
                     <th>Assigned Date</th>
@@ -149,6 +152,8 @@ export default function HRResultsPage() {
                     assignments.map((assignment) => (
                       <tr key={assignment.id}>
                         <td>{assignment.applicantName}</td>
+                        <td>{assignment.positionAppliedFor || '-'}</td>
+                        <td>{assignment.tlName || assignment.tlEmail || '-'}</td>
                         <td>{assignment.age}</td>
                         <td>{assignment.education}</td>
                         <td>{assignment.course}</td>
@@ -159,7 +164,7 @@ export default function HRResultsPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="7" className="empty-message">
+                      <td colSpan="9" className="empty-message">
                         No assignments found
                       </td>
                     </tr>
@@ -232,6 +237,7 @@ export default function HRResultsPage() {
                         <td>{applicant.age}</td>
                         <td>{applicant.education}</td>
                         <td>{applicant.course}</td>
+                        <td>{applicant.positionAppliedFor || '-'}</td>
                         <td>{applicant.collectionExperience}</td>
                         <td>{applicant.referral}</td>
                         <td>
@@ -247,7 +253,7 @@ export default function HRResultsPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="8" className="empty-message">
+                      <td colSpan="9" className="empty-message">
                         No decisions found matching your filters
                       </td>
                     </tr>

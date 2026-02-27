@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { addApplicant } from '@/lib/db'
+import { POSITION_OPTIONS } from '@/lib/positions'
 import './add-applicant.css'
 
 export default function AddApplicantPage() {
@@ -16,6 +17,7 @@ export default function AddApplicantPage() {
     age: '',
     education: '',
     course: '',
+    positionAppliedFor: '',
     collectionExperience: '',
     referral: '',
     resume: null,
@@ -89,6 +91,7 @@ export default function AddApplicantPage() {
       !formData.age ||
       !formData.education ||
       !formData.course ||
+      !formData.positionAppliedFor ||
       !formData.collectionExperience ||
       !formData.referral ||
       !formData.resume ||
@@ -119,6 +122,7 @@ export default function AddApplicantPage() {
           age: formData.age,
           education: formData.education,
           course: formData.course,
+          positionAppliedFor: formData.positionAppliedFor,
           collectionExperience: formData.collectionExperience,
           referral: formData.referral,
           resumeFileName: formData.resume.name,
@@ -140,6 +144,7 @@ export default function AddApplicantPage() {
           age: '',
           education: '',
           course: '',
+          positionAppliedFor: '',
           collectionExperience: '',
           referral: '',
           resume: null,
@@ -172,7 +177,6 @@ export default function AddApplicantPage() {
         <p className="subtitle">
           Add a new applicant's information and resume
         </p>
-
         <div className="form-container">
           {/* Show message (success or error) */}
           {message && (
@@ -214,17 +218,27 @@ export default function AddApplicantPage() {
               />
             </div>
 
-            {/* Education field */}
+            {/* Education field - Updated to dropdown */}
             <div className="form-group">
               <label htmlFor="education">Education *</label>
-              <input
+              <select
                 id="education"
-                type="text"
                 name="education"
-                placeholder="e.g. Bachelor of Science"
                 value={formData.education}
                 onChange={handleInputChange}
-              />
+                className="education-select"
+                required
+              >
+                <option value="" disabled>Select education level</option>
+                <option value="Highschool Undergrad">Highschool Undergrad</option>
+                <option value="Highschool Graduate">Highschool Graduate</option>
+                <option value="Senior Highschool Undergrad">Senior Highschool Undergrad</option>
+                <option value="Senior Highschool Graduate">Senior Highschool Graduate</option>
+                <option value="College Undergrad">College Undergrad</option>
+                <option value="College Graduate">College Graduate</option>
+                <option value="Vocational Undergrad">Vocational Undergrad</option>
+                <option value="Vocational Graduate">Vocational Graduate</option>
+              </select>
             </div>
 
             {/* Course field */}
@@ -238,6 +252,26 @@ export default function AddApplicantPage() {
                 value={formData.course}
                 onChange={handleInputChange}
               />
+            </div>
+
+            {/* Collection Experience field */}
+            <div className="form-group">
+              <label htmlFor="positionAppliedFor">Position Applied For *</label>
+              <select
+                id="positionAppliedFor"
+                name="positionAppliedFor"
+                value={formData.positionAppliedFor}
+                onChange={handleInputChange}
+                className="position-select"
+                required
+              >
+                <option value="" disabled>Select position</option>
+                {POSITION_OPTIONS.map((position) => (
+                  <option key={position} value={position}>
+                    {position}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Collection Experience field */}
@@ -260,7 +294,7 @@ export default function AddApplicantPage() {
                 id="referral"
                 type="text"
                 name="referral"
-                placeholder="e.g. John Smith - Senior Developer"
+                placeholder="Referral"
                 value={formData.referral}
                 onChange={handleInputChange}
               />

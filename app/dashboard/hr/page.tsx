@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Sidebar from '@/components/Sidebar'
 import { getAllApplicants, getAllAssignments } from '@/lib/db'
+import { openPdfInNewTab } from '@/lib/pdf'
 import './hr-dashboard.css'
 
 export default function HRDashboard() {
@@ -145,7 +146,7 @@ export default function HRDashboard() {
                       <td>{applicant.addedDate}</td>
                       <td>
                         <button
-                          onClick={() => window.open(applicant.resumeData, '_blank')}
+                          onClick={() => openPdfInNewTab(applicant.resumeData)}
                           className="btn-view-resume"
                         >
                           📄 View
@@ -213,7 +214,7 @@ export default function HRDashboard() {
                         </td>
                         <td>
                           <button
-                            onClick={() => window.open(applicant.resumeData, '_blank')}
+                            onClick={() => openPdfInNewTab(applicant.resumeData)}
                             className="btn-view-resume"
                           >
                             📄 View
@@ -270,7 +271,7 @@ export default function HRDashboard() {
                       </td>
                       <td>
                         <button
-                          onClick={() => window.open(applicant.resumeData, '_blank')}
+                          onClick={() => openPdfInNewTab(applicant.resumeData)}
                           className="btn-view-resume"
                         >
                           📄 View

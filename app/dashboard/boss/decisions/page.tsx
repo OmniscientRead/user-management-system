@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { getAllApplicants } from '@/lib/db'
+import { openPdfInNewTab } from '@/lib/pdf'
 import '../boss-dashboard.css'
 
 export default function BossDecisionsPage() {
@@ -152,6 +153,7 @@ export default function BossDecisionsPage() {
                   <th>Age</th>
                   <th>Education</th>
                   <th>Course</th>
+                  <th>Position Applied</th>
                   <th>Experience</th>
                   <th>Referral</th>
                   <th>Decision</th>
@@ -166,6 +168,7 @@ export default function BossDecisionsPage() {
                     <td>{decision.age}</td>
                     <td>{decision.education}</td>
                     <td>{decision.course}</td>
+                    <td>{decision.positionAppliedFor || '-'}</td>
                     <td>{decision.collectionExperience}</td>
                     <td>{decision.referral}</td>
                     <td>
@@ -176,7 +179,7 @@ export default function BossDecisionsPage() {
                     <td>{decision.addedDate}</td>
                     <td>
                       <button
-                        onClick={() => window.open(decision.resumeData, '_blank')}
+                        onClick={() => openPdfInNewTab(decision.resumeData)}
                         className="btn-view-resume"
                       >
                         View

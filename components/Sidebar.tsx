@@ -34,9 +34,10 @@ export default function Sidebar({ role, userName }: SidebarProps) {
         { label: 'Results', href: '/dashboard/hr/results', icon: '📋' },
       ],
       'team-lead': [
-        { label: 'Dashboard', href: '/dashboard/team-lead', icon: '📊' },
+        { label: 'Dashboard', href: '/dashboard/team-lead', icon: 'D' },
+        { label: 'My Assignments', href: '/dashboard/team-lead/assignments', icon: 'A' },
         // Single manpower tab for team lead
-        { label: 'Manpower', href: '/dashboard/team-lead/manpower', icon: '👥' },
+        { label: 'Manpower', href: '/dashboard/team-lead/manpower', icon: 'M' },
       ],
       admin: [
         { label: 'Dashboard', href: '/dashboard/admin', icon: '📊' },

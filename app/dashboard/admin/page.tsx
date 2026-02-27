@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import Link from 'next/link'
+import { getAllApplicants, getAllAssignments, getAllUsers, getSettings } from '@/lib/db'
 import './admin-dashboard.css'
 
 interface DashboardStats {
@@ -33,29 +34,53 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user')
-    if (!storedUser) {
-      router.push('/')
-      return
+    let isMounted = true
+
+    const initialize = async () => {
+      try {
+        const storedUser = localStorage.getItem('user')
+        if (!storedUser) {
+          router.replace('/')
+          return
+        }
+
+        let userData: { email?: string; role?: string } | null = null
+        try {
+          userData = JSON.parse(storedUser)
+        } catch {
+          localStorage.removeItem('user')
+          router.replace('/')
+          return
+        }
+
+        if (!userData || userData.role !== 'admin') {
+          router.replace('/')
+          return
+        }
+
+        if (!isMounted) return
+        setUser(userData)
+        await loadDashboardStats()
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+        }
+      }
     }
 
-    const userData = JSON.parse(storedUser)
-    if (userData.role !== 'admin') {
-      router.push('/')
-      return
-    }
+    initialize()
 
-    setUser(userData)
-    loadDashboardStats()
-    setLoading(false)
+    return () => {
+      isMounted = false
+    }
   }, [router])
 
-  const loadDashboardStats = () => {
-    // Load from localStorage
-    const users = JSON.parse(localStorage.getItem('users') || '[]')
-    const applicants = JSON.parse(localStorage.getItem('applicants') || '[]')
-    const assignments = JSON.parse(localStorage.getItem('assignments') || '[]')
-    const manPowerLimit = parseInt(localStorage.getItem('manPowerLimit') || '50')
+  const loadDashboardStats = async () => {
+    const users = await getAllUsers()
+    const applicants = await getAllApplicants()
+    const assignments = await getAllAssignments()
+    const settings = await getSettings()
+    const manPowerLimit = settings.manPowerLimit ?? 50
     
     const teamLeads = users.filter((u: any) => u.role === 'team-lead')
     const pendingApps = applicants.filter((a: any) => a.status === 'pending')
@@ -75,20 +100,20 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="dashboard-container">
+      <div className="admin-dashboard-container">
         <Sidebar role="admin" userName={user?.email || 'Admin'} />
-        <div className="dashboard-content">
-          <div className="loading-state">Loading dashboard...</div>
+        <div className="admin-dashboard-content">
+          <div className="admin-loading-state">Loading dashboard...</div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="dashboard-container">
+    <div className="admin-dashboard-container">
       <Sidebar role="admin" userName={user?.email || 'Admin'} />
       
-      <div className="dashboard-content">
+      <div className="admin-dashboard-content">
         <h1>Master Admin Dashboard</h1>
         <p className="subtitle">Complete control over users, applicants, and assignments</p>
 
@@ -130,19 +155,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="stat-card">
-            <div className="stat-icon">⚡</div>
-            <div className="stat-content">
-              <p className="stat-label">Man Power</p>
-              <p className="stat-value">{stats.usedManPower}/{stats.manPowerLimit}</p>
-              <div className="progress-bar">
-                <div 
-                  className="progress-fill" 
-                  style={{width: `${(stats.usedManPower / stats.manPowerLimit) * 100}%`}}
-                ></div>
-              </div>
-            </div>
-          </div>
+        
         </div>
 
         {/* Quick Actions */}

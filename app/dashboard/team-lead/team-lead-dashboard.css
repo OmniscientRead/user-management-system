@@ -6,7 +6,7 @@
   background-image: url('/logo.jpg');
   background-size: contain;
   background-repeat: no-repeat;
-  background-position: center;
+  background-position: 100%;
   background-attachment: fixed;
   position: relative;
 }
@@ -42,6 +42,26 @@
   color: #666;
   font-size: 14px;
   margin: 0 0 30px 0;
+}
+
+.message-banner {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.message-banner.success {
+  background: #e9f7ee;
+  color: #1e7b38;
+  border: 1px solid #9ed5ae;
+}
+
+.message-banner.error {
+  background: #fdeeee;
+  color: #9f1d1d;
+  border: 1px solid #efb5b5;
 }
 
 /* Manpower Status */

@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import { addUser, deleteUser, getAllUsers, putUser } from '@/lib/db'
+import { COMPANY_EMAIL_ERROR, isAllowedCompanyEmail, normalizeEmail } from '@/lib/email-domain'
 import './users.css'
 
 interface User {
@@ -16,19 +18,18 @@ interface User {
 
 export default function ManageUsersPage() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<{ email: string; role: string } | null>(null)
   const [users, setUsers] = useState<User[]>([])
   const [showAddForm, setShowAddForm] = useState(false)
   const [message, setMessage] = useState({ text: '', type: '' })
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
 
-  // Form data
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'hr' as User['role']
+    role: 'hr' as User['role'],
   })
 
   useEffect(() => {
@@ -48,21 +49,9 @@ export default function ManageUsersPage() {
     loadUsers()
   }, [router])
 
-  const loadUsers = () => {
-    const storedUsers = localStorage.getItem('users')
-    if (storedUsers) {
-      setUsers(JSON.parse(storedUsers))
-    } else {
-      // Initial users
-      const initialUsers = [
-        { id: 1, email: 'boss@company.com', role: 'boss', createdAt: new Date().toISOString() },
-        { id: 2, email: 'hr@company.com', role: 'hr', createdAt: new Date().toISOString() },
-        { id: 3, email: 'tl@company.com', role: 'team-lead', createdAt: new Date().toISOString() },
-        { id: 4, email: 'admin@company.com', role: 'admin', createdAt: new Date().toISOString() },
-      ]
-      setUsers(initialUsers)
-      localStorage.setItem('users', JSON.stringify(initialUsers))
-    }
+  const loadUsers = async () => {
+    const allUsers = await getAllUsers()
+    setUsers(allUsers)
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -70,114 +59,125 @@ export default function ManageUsersPage() {
     setFormData({ ...formData, [name]: value })
   }
 
-  const handleAddUser = (e: React.FormEvent) => {
+  const showToast = (text: string, type: 'success' | 'error') => {
+    setMessage({ text, type })
+    setTimeout(() => setMessage({ text: '', type: '' }), 3000)
+  }
+
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Validation
-    if (!formData.email || !formData.password || !formData.role) {
-      setMessage({ text: 'Please fill all fields', type: 'error' })
+    const normalizedEmail = normalizeEmail(formData.email)
+
+    if (!normalizedEmail || !formData.password || !formData.role) {
+      showToast('Please fill all fields', 'error')
+      return
+    }
+
+    if (!isAllowedCompanyEmail(normalizedEmail)) {
+      showToast(COMPANY_EMAIL_ERROR, 'error')
       return
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setMessage({ text: 'Passwords do not match', type: 'error' })
+      showToast('Passwords do not match', 'error')
       return
     }
 
     if (formData.password.length < 6) {
-      setMessage({ text: 'Password must be at least 6 characters', type: 'error' })
+      showToast('Password must be at least 6 characters', 'error')
       return
     }
 
-    if (users.some(u => u.email === formData.email)) {
-      setMessage({ text: 'Email already exists', type: 'error' })
+    if (users.some((u) => normalizeEmail(u.email) === normalizedEmail)) {
+      showToast('Email already exists', 'error')
       return
     }
 
-    // Add new user
-    const newUser: User = {
-      id: users.length + 1,
-      email: formData.email,
+    const newUser: Omit<User, 'id'> = {
+      email: normalizedEmail,
+      password: formData.password,
       role: formData.role,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     }
 
-    const updatedUsers = [...users, newUser]
-    setUsers(updatedUsers)
-    localStorage.setItem('users', JSON.stringify(updatedUsers))
-    
-    setMessage({ text: '✓ User added successfully!', type: 'success' })
+    await addUser(newUser)
+    await loadUsers()
+
+    showToast('User added successfully', 'success')
     setFormData({ email: '', password: '', confirmPassword: '', role: 'hr' })
     setShowAddForm(false)
-
-    setTimeout(() => setMessage({ text: '', type: '' }), 3000)
   }
 
-  const handleDeleteUser = (id: number, email: string) => {
-    if (email === 'admin@company.com') {
-      setMessage({ text: 'Cannot delete master admin account', type: 'error' })
+  const handleDeleteUser = async (id: number, email: string) => {
+    if (normalizeEmail(email) === 'admin@constantinolawoffice.com') {
+      showToast('Cannot delete master admin account', 'error')
       return
     }
 
-    if (confirm(`Are you sure you want to delete user ${email}?`)) {
-      const updatedUsers = users.filter(u => u.id !== id)
-      setUsers(updatedUsers)
-      localStorage.setItem('users', JSON.stringify(updatedUsers))
-      setMessage({ text: '✓ User deleted successfully!', type: 'success' })
-      
-      setTimeout(() => setMessage({ text: '', type: '' }), 3000)
+    if (!confirm(`Are you sure you want to delete user ${email}?`)) {
+      return
     }
+
+    await deleteUser(id)
+    await loadUsers()
+    showToast('User deleted successfully', 'success')
   }
 
-  const handleResetPassword = (userId: number) => {
+  const handleResetPassword = async (userId: number) => {
     const newPassword = prompt('Enter new password (min 6 characters):')
-    if (newPassword && newPassword.length >= 6) {
-      setMessage({ text: '✓ Password reset successfully!', type: 'success' })
-      setTimeout(() => setMessage({ text: '', type: '' }), 3000)
-    } else if (newPassword) {
-      setMessage({ text: 'Password must be at least 6 characters', type: 'error' })
+
+    if (!newPassword) {
+      return
     }
+
+    if (newPassword.length < 6) {
+      showToast('Password must be at least 6 characters', 'error')
+      return
+    }
+
+    const targetUser = users.find((u) => u.id === userId)
+    if (!targetUser) {
+      showToast('User not found', 'error')
+      return
+    }
+
+    await putUser({ ...targetUser, password: newPassword })
+    await loadUsers()
+    showToast('Password reset successfully', 'success')
   }
 
-  // Filter users based on search and role
-  const filteredUsers = users.filter(u => {
+  const filteredUsers = users.filter((u) => {
     const matchesSearch = u.email.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesRole = roleFilter === 'all' || u.role === roleFilter
     return matchesSearch && matchesRole
   })
 
-  if (!user) return (
-    <div className="dashboard-container">
-      <Sidebar role="admin" userName="Admin" />
-      <div className="dashboard-content">
-        <div className="loading-state">Loading...</div>
+  if (!user) {
+    return (
+      <div className="admin-users-container">
+        <Sidebar role="admin" userName="Admin" />
+        <div className="admin-users-content">
+          <div className="loading-state">Loading...</div>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
-    <div className="dashboard-container">
+    <div className="admin-users-container">
       <Sidebar role="admin" userName={user.email} />
-      
-      <div className="dashboard-content">
+
+      <div className="admin-users-content">
         <div className="page-header">
           <h1>Manage Users</h1>
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="btn-add-user"
-          >
-            {showAddForm ? '✕ Cancel' : '+ Add New User'}
+          <button onClick={() => setShowAddForm(!showAddForm)} className="btn-add-user">
+            {showAddForm ? 'Cancel' : '+ Add New User'}
           </button>
         </div>
 
-        {/* Message display */}
-        {message.text && (
-          <div className={`message message-${message.type}`}>
-            {message.text}
-          </div>
-        )}
+        {message.text && <div className={`message message-${message.type}`}>{message.text}</div>}
 
-        {/* Add user form */}
         {showAddForm && (
           <div className="add-user-form">
             <h2>Add New User</h2>
@@ -187,7 +187,7 @@ export default function ManageUsersPage() {
                 <input
                   type="email"
                   name="email"
-                  placeholder="user@company.com"
+                  placeholder="user@constantinolawoffice.com"
                   value={formData.email}
                   onChange={handleInputChange}
                   required
@@ -235,7 +235,6 @@ export default function ManageUsersPage() {
           </div>
         )}
 
-        {/* Filters */}
         <div className="filters-bar">
           <input
             type="text"
@@ -244,8 +243,8 @@ export default function ManageUsersPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
           />
-          <select 
-            value={roleFilter} 
+          <select
+            value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
             className="role-filter"
           >
@@ -257,7 +256,6 @@ export default function ManageUsersPage() {
           </select>
         </div>
 
-        {/* Users table */}
         <div className="users-table-wrapper">
           <table className="users-table">
             <thead>
@@ -276,26 +274,20 @@ export default function ManageUsersPage() {
                     <td>{u.id}</td>
                     <td>{u.email}</td>
                     <td>
-                      <span className={`role-badge role-${u.role}`}>
-                        {u.role.replace('-', ' ').toUpperCase()}
-                      </span>
+                      <span className={`role-badge role-${u.role}`}>{u.role.replace('-', ' ').toUpperCase()}</span>
                     </td>
                     <td>{new Date(u.createdAt).toLocaleDateString()}</td>
                     <td>
-                      <button
-                        onClick={() => handleResetPassword(u.id)}
-                        className="btn-reset"
-                        title="Reset Password"
-                      >
-                        🔑
+                      <button onClick={() => handleResetPassword(u.id)} className="btn-reset" title="Reset Password">
+                        Reset
                       </button>
                       <button
                         onClick={() => handleDeleteUser(u.id, u.email)}
                         className="btn-delete"
-                        disabled={u.email === 'admin@company.com'}
-                        title={u.email === 'admin@company.com' ? 'Cannot delete master admin' : 'Delete user'}
+                        disabled={normalizeEmail(u.email) === 'admin@constantinolawoffice.com'}
+                        title={normalizeEmail(u.email) === 'admin@constantinolawoffice.com' ? 'Cannot delete master admin' : 'Delete user'}
                       >
-                        🗑️
+                        Delete
                       </button>
                     </td>
                   </tr>
@@ -311,10 +303,7 @@ export default function ManageUsersPage() {
           </table>
         </div>
 
-        {/* Summary */}
-        <div className="table-summary">
-          Showing {filteredUsers.length} of {users.length} users
-        </div>
+        <div className="table-summary">Showing {filteredUsers.length} of {users.length} users</div>
       </div>
     </div>
   )

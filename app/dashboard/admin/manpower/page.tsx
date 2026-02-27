@@ -1,50 +1,52 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import {
+  deleteManpowerRequest,
+  getAllManpowerRequests,
+  getAllUsers,
+  putManpowerRequest,
+  putUser,
+} from '@/lib/db'
 import './manpower.css'
 
+type RequestStatus = 'pending' | 'approved' | 'rejected'
+
 interface ManpowerRequest {
-  id: string
-  tlId: string
-  tlName: string
+  id: number | string
+  teamLeadEmail?: string
+  teamLeadName?: string
+  tlId?: number | string
+  tlName?: string
   position: string
-  department: string
-  requiredCount: number
-  reason: string
-  status: 'PENDING' | 'APPROVED' | 'REJECTED'
-  createdAt: string
+  requestedCount?: number
+  requiredCount?: number
+  limit?: number | null
+  assignedCount?: number
+  status: string
+  date?: string
+  createdAt?: string
 }
 
-interface TeamLead {
-  id: string
-  name: string
+interface TeamLeadUser {
+  id: number
   email: string
-  tlAssignmentLimit: number
-  currentAssignments: number
+  name?: string
+  role: 'boss' | 'hr' | 'team-lead' | 'admin'
+  tlAssignmentLimit?: number
 }
 
 export default function ManPowerPage() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
-  const [activeTab, setActiveTab] = useState<'overview' | 'requests' | 'limits'>('overview')
-  
-  // Manpower limit states
-  const [manPowerLimit, setManPowerLimit] = useState(50)
-  const [currentApproved, setCurrentApproved] = useState(0)
-  
-  // Requests states
+  const [user, setUser] = useState<{ email: string; role: string } | null>(null)
+  const [activeTab, setActiveTab] = useState<'requests' | 'limits'>('requests')
   const [requests, setRequests] = useState<ManpowerRequest[]>([])
-  const [filteredRequests, setFilteredRequests] = useState<ManpowerRequest[]>([])
-  const [statusFilter, setStatusFilter] = useState<string>('ALL')
-  
-  // Team Lead limits states
-  const [teamLeads, setTeamLeads] = useState<TeamLead[]>([])
-  const [editingTlId, setEditingTlId] = useState<string | null>(null)
-  const [newLimit, setNewLimit] = useState<number>(0)
-  
-  // Message state
+  const [statusFilter, setStatusFilter] = useState<'all' | RequestStatus>('all')
+  const [teamLeads, setTeamLeads] = useState<TeamLeadUser[]>([])
+  const [editingTlId, setEditingTlId] = useState<number | null>(null)
+  const [newLimit, setNewLimit] = useState<number>(5)
   const [message, setMessage] = useState({ text: '', type: '' })
 
   useEffect(() => {
@@ -64,254 +66,149 @@ export default function ManPowerPage() {
     loadAllData()
   }, [router])
 
-  const loadAllData = () => {
-    loadManpowerLimit()
-    loadManpowerRequests()
-    loadTeamLeads()
-  }
-
-  const loadManpowerLimit = () => {
-    const storedLimit = localStorage.getItem('manPowerLimit')
-    if (storedLimit) {
-      setManPowerLimit(parseInt(storedLimit))
-    }
-
-    const applicants = JSON.parse(localStorage.getItem('applicants') || '[]')
-    const approved = applicants.filter((a: any) => a.status === 'approved').length
-    setCurrentApproved(approved)
-  }
-
-  const loadManpowerRequests = () => {
-    // Get all manpower requests from localStorage
-    const allRequests = JSON.parse(localStorage.getItem('manpowerRequests') || '[]')
+  const loadAllData = async () => {
+    const allRequests = (await getAllManpowerRequests()) as ManpowerRequest[]
     setRequests(allRequests)
-    applyFilter(allRequests, statusFilter)
+
+    const allUsers = (await getAllUsers()) as TeamLeadUser[]
+    setTeamLeads(allUsers.filter((u) => u.role === 'team-lead'))
   }
 
-  const loadTeamLeads = () => {
-    // Get all users and filter team leads
-    const users = JSON.parse(localStorage.getItem('users') || '[]')
-    const requests = JSON.parse(localStorage.getItem('manpowerRequests') || '[]')
-    
-    const leads = users
-      .filter((u: any) => u.role === 'team-lead')
-      .map((tl: any) => ({
-        id: tl.id,
-        name: tl.name,
-        email: tl.email,
-        tlAssignmentLimit: tl.tlAssignmentLimit || 5,
-        currentAssignments: requests.filter((r: any) => r.tlId === tl.id && r.status === 'APPROVED').length
-      }))
-    
-    setTeamLeads(leads)
+  const showToast = (text: string, type: 'success' | 'error') => {
+    setMessage({ text, type })
+    setTimeout(() => setMessage({ text: '', type: '' }), 3000)
   }
 
-  const applyFilter = (requestsList: ManpowerRequest[], filter: string) => {
-    if (filter === 'ALL') {
-      setFilteredRequests(requestsList)
-    } else {
-      setFilteredRequests(requestsList.filter(r => r.status === filter))
-    }
+  const normalizeStatus = (status: string): RequestStatus => {
+    const normalized = status.toLowerCase()
+    if (normalized === 'approved') return 'approved'
+    if (normalized === 'rejected') return 'rejected'
+    return 'pending'
   }
 
-  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const filter = e.target.value
-    setStatusFilter(filter)
-    applyFilter(requests, filter)
-  }
+  const getRequestedCount = (request: ManpowerRequest): number =>
+    Number(request.requestedCount ?? request.requiredCount ?? 0)
 
-  // Update global manpower limit
-  const handleUpdateLimit = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (manPowerLimit < currentApproved) {
-      setMessage({ 
-        text: `Cannot set limit below current approved applicants (${currentApproved})`, 
-        type: 'error' 
-      })
+  const getRequestDate = (request: ManpowerRequest): string =>
+    request.date || request.createdAt || new Date().toISOString().split('T')[0]
+
+  const filteredRequests = useMemo(() => {
+    return requests.filter((request) => {
+      if (statusFilter === 'all') return true
+      return normalizeStatus(request.status) === statusFilter
+    })
+  }, [requests, statusFilter])
+
+  const handleSetRequestLimit = async (requestId: number | string, value: string) => {
+    const parsedLimit = Number(value)
+    if (Number.isNaN(parsedLimit) || parsedLimit < 0) {
+      showToast('Please enter a valid non-negative limit', 'error')
       return
     }
 
-    localStorage.setItem('manPowerLimit', manPowerLimit.toString())
-    setMessage({ text: '✓ Man power limit updated successfully!', type: 'success' })
-    setTimeout(() => setMessage({ text: '', type: '' }), 3000)
-  }
+    const target = requests.find((request) => request.id === requestId)
+    if (!target) return
 
-  // Update individual TL limit
-  const handleUpdateTLLimit = async (tlId: string) => {
-    const users = JSON.parse(localStorage.getItem('users') || '[]')
-    const updatedUsers = users.map((u: any) => {
-      if (u.id === tlId) {
-        return { ...u, tlAssignmentLimit: newLimit }
-      }
-      return u
-    })
-    
-    localStorage.setItem('users', JSON.stringify(updatedUsers))
-    setEditingTlId(null)
-    loadTeamLeads()
-    setMessage({ text: '✓ Team Lead limit updated successfully!', type: 'success' })
-    setTimeout(() => setMessage({ text: '', type: '' }), 3000)
-  }
-
-  // Delete manpower request (Admin only - hard delete)
-  const handleDeleteRequest = (requestId: string) => {
-    if (confirm('Are you sure you want to permanently delete this manpower request? This will remove it from ALL users (TL, HR, Admin) and cannot be undone.')) {
-      // Get all requests
-      const allRequests = JSON.parse(localStorage.getItem('manpowerRequests') || '[]')
-      
-      // Filter out the deleted request (hard delete)
-      const updatedRequests = allRequests.filter((r: any) => r.id !== requestId)
-      
-      // Save back to localStorage
-      localStorage.setItem('manpowerRequests', JSON.stringify(updatedRequests))
-      
-      // Reload data
-      loadManpowerRequests()
-      
-      setMessage({ text: '✓ Manpower request permanently deleted from system!', type: 'success' })
-      setTimeout(() => setMessage({ text: '', type: '' }), 3000)
+    const updatedRequest = {
+      ...target,
+      limit: parsedLimit,
+      approvedCount: parsedLimit,
     }
+    await putManpowerRequest(updatedRequest)
+    await loadAllData()
+    showToast('Request limit updated', 'success')
   }
 
-  // Approve/Reject request (Admin can also do this)
-  const handleRequestStatus = (requestId: string, newStatus: 'APPROVED' | 'REJECTED') => {
-    const allRequests = JSON.parse(localStorage.getItem('manpowerRequests') || '[]')
-    
-    const updatedRequests = allRequests.map((r: any) => {
-      if (r.id === requestId) {
-        return { ...r, status: newStatus }
-      }
-      return r
-    })
-    
-    localStorage.setItem('manpowerRequests', JSON.stringify(updatedRequests))
-    loadManpowerRequests()
-    
-    setMessage({ text: `✓ Request ${newStatus.toLowerCase()} successfully!`, type: 'success' })
-    setTimeout(() => setMessage({ text: '', type: '' }), 3000)
+  const handleRequestStatus = async (requestId: number | string, status: RequestStatus) => {
+    const target = requests.find((request) => request.id === requestId)
+    if (!target) return
+
+    const updatedRequest = {
+      ...target,
+      status,
+      approvedCount: status === 'approved' ? Number(target.limit ?? getRequestedCount(target)) : 0,
+    }
+    await putManpowerRequest(updatedRequest)
+    await loadAllData()
+    showToast(`Request ${status}`, 'success')
   }
 
-  if (!user) return (
-    <div className="dashboard-container">
-      <Sidebar role="admin" userName="Admin" />
-      <div className="dashboard-content">
-        <div className="loading-state">Loading...</div>
+  const handleDeleteRequest = async (requestId: number | string) => {
+    if (!confirm('Delete this manpower request?')) return
+
+    await deleteManpowerRequest(Number(requestId))
+    await loadAllData()
+    showToast('Manpower request deleted', 'success')
+  }
+
+  const handleUpdateTLLimit = async (tlId: number) => {
+    if (newLimit < 1) {
+      showToast('Limit must be at least 1', 'error')
+      return
+    }
+
+    const targetUser = teamLeads.find((u) => u.id === tlId)
+    if (!targetUser) {
+      showToast('Team lead not found', 'error')
+      return
+    }
+
+    await putUser({ ...targetUser, tlAssignmentLimit: newLimit })
+    await loadAllData()
+    setEditingTlId(null)
+    showToast('Team Lead manpower limit updated', 'success')
+  }
+
+  if (!user) {
+    return (
+      <div className="admin-manpower-container">
+        <Sidebar role="admin" userName="Admin" />
+        <div className="admin-manpower-content">
+          <div className="loading-state">Loading...</div>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
-    <div className="dashboard-container">
+    <div className="admin-manpower-container">
       <Sidebar role="admin" userName={user.email} />
-      
-      <div className="dashboard-content">
+
+      <div className="admin-manpower-content">
         <h1>Man Power Management</h1>
-        <p className="subtitle">Comprehensive control over manpower requests and limits</p>
+        <p className="subtitle">Approve/reject TL requests and set Team Lead limits</p>
 
-        {message.text && (
-          <div className={`message message-${message.type}`}>
-            {message.text}
-          </div>
-        )}
+        {message.text && <div className={`message message-${message.type}`}>{message.text}</div>}
 
-        {/* Tab Navigation */}
         <div className="tab-navigation">
-          <button 
-            className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => setActiveTab('overview')}
-          >
-            📊 Overview
-          </button>
-          <button 
+          <button
             className={`tab-btn ${activeTab === 'requests' ? 'active' : ''}`}
             onClick={() => setActiveTab('requests')}
           >
-            📋 All Requests
+            All Requests
           </button>
-          <button 
+          <button
             className={`tab-btn ${activeTab === 'limits' ? 'active' : ''}`}
             onClick={() => setActiveTab('limits')}
           >
-            👥 Team Lead Limits
+            Team Lead Limits
           </button>
         </div>
 
-        {/* Overview Tab */}
-        {activeTab === 'overview' && (
-          <div className="manpower-container">
-            <div className="current-stats">
-              <div className="stat-card">
-                <h3>Total Requests</h3>
-                <div className="stat-number">{requests.length}</div>
-              </div>
-              <div className="stat-card">
-                <h3>Pending</h3>
-                <div className="stat-number">
-                  {requests.filter(r => r.status === 'PENDING').length}
-                </div>
-              </div>
-              <div className="stat-card">
-                <h3>Approved</h3>
-                <div className="stat-number">
-                  {requests.filter(r => r.status === 'APPROVED').length}
-                </div>
-              </div>
-              <div className="stat-card">
-                <h3>Team Leads</h3>
-                <div className="stat-number">{teamLeads.length}</div>
-              </div>
-            </div>
-
-            <div className="progress-section">
-              <h3>System Capacity</h3>
-              <div className="progress-label">
-                <span>Current Approved Applicants</span>
-                <span>{currentApproved} / {manPowerLimit}</span>
-              </div>
-              <div className="progress-bar-large">
-                <div 
-                  className={`progress-fill ${(currentApproved / manPowerLimit) > 0.9 ? 'critical' : (currentApproved / manPowerLimit) > 0.7 ? 'warning' : ''}`}
-                  style={{width: `${(currentApproved / manPowerLimit) * 100}%`}}
-                ></div>
-              </div>
-            </div>
-
-            <form onSubmit={handleUpdateLimit} className="limit-form">
-              <h2>Update Global Man Power Limit</h2>
-              <div className="form-group">
-                <label>Maximum Approved Applicants</label>
-                <input
-                  type="number"
-                  min={currentApproved}
-                  max={1000}
-                  value={manPowerLimit}
-                  onChange={(e) => setManPowerLimit(parseInt(e.target.value))}
-                  required
-                />
-                <small className="input-hint">
-                  Current approved: {currentApproved} | Available slots: {manPowerLimit - currentApproved}
-                </small>
-              </div>
-              <button type="submit" className="btn-update">
-                Update Global Limit
-              </button>
-            </form>
-          </div>
-        )}
-
-        {/* Requests Tab */}
         {activeTab === 'requests' && (
           <div className="manpower-container">
             <div className="requests-header">
               <h2>All Manpower Requests</h2>
               <div className="filter-group">
-                <label>Filter by status:</label>
-                <select value={statusFilter} onChange={handleStatusFilterChange}>
-                  <option value="ALL">All Requests</option>
-                  <option value="PENDING">Pending</option>
-                  <option value="APPROVED">Approved</option>
-                  <option value="REJECTED">Rejected</option>
+                <label>Filter status:</label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as 'all' | RequestStatus)}
+                >
+                  <option value="all">All</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
                 </select>
               </div>
             </div>
@@ -327,59 +224,59 @@ export default function ManPowerPage() {
                     <tr>
                       <th>Team Lead</th>
                       <th>Position</th>
-                      <th>Department</th>
-                      <th>Required</th>
-                      <th>Reason</th>
+                      <th>Requested</th>
+                      <th>Limit</th>
                       <th>Status</th>
                       <th>Date</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRequests.map((request) => (
-                      <tr key={request.id}>
-                        <td>{request.tlName}</td>
-                        <td>{request.position}</td>
-                        <td>{request.department}</td>
-                        <td>{request.requiredCount}</td>
-                        <td>{request.reason}</td>
-                        <td>
-                          <span className={`status-badge ${request.status.toLowerCase()}`}>
-                            {request.status}
-                          </span>
-                        </td>
-                        <td>{new Date(request.createdAt).toLocaleDateString()}</td>
-                        <td>
-                          <div className="action-buttons">
-                            {request.status === 'PENDING' && (
-                              <>
-                                <button
-                                  onClick={() => handleRequestStatus(request.id, 'APPROVED')}
-                                  className="btn-approve"
-                                  title="Approve"
-                                >
-                                  ✓
-                                </button>
-                                <button
-                                  onClick={() => handleRequestStatus(request.id, 'REJECTED')}
-                                  className="btn-reject"
-                                  title="Reject"
-                                >
-                                  ✗
-                                </button>
-                              </>
-                            )}
-                            <button
-                              onClick={() => handleDeleteRequest(request.id)}
-                              className="btn-delete"
-                              title="Permanently Delete"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredRequests.map((request) => {
+                      const normalizedStatus = normalizeStatus(request.status)
+                      const requestedCount = getRequestedCount(request)
+                      const tlLabel = request.teamLeadEmail || request.teamLeadName || request.tlName || '-'
+
+                      return (
+                        <tr key={request.id}>
+                          <td>{tlLabel}</td>
+                          <td>{request.position}</td>
+                          <td>{requestedCount}</td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0"
+                              defaultValue={request.limit ?? requestedCount}
+                              className="limit-input"
+                              onBlur={(e) => handleSetRequestLimit(request.id, e.target.value)}
+                            />
+                          </td>
+                          <td>
+                            <span className={`status-badge ${normalizedStatus}`}>{normalizedStatus.toUpperCase()}</span>
+                          </td>
+                          <td>{new Date(getRequestDate(request)).toLocaleDateString()}</td>
+                          <td>
+                            <div className="action-buttons">
+                              <button
+                                onClick={() => handleRequestStatus(request.id, 'approved')}
+                                className="btn-approve"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleRequestStatus(request.id, 'rejected')}
+                                className="btn-reject"
+                              >
+                                Reject
+                              </button>
+                              <button onClick={() => handleDeleteRequest(request.id)} className="btn-delete">
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -387,13 +284,10 @@ export default function ManPowerPage() {
           </div>
         )}
 
-        {/* Team Lead Limits Tab */}
         {activeTab === 'limits' && (
           <div className="manpower-container">
             <h2>Team Lead Assignment Limits</h2>
-            <p className="info-text">
-              Set maximum assignments per team lead. This limit is enforced system-wide.
-            </p>
+            <p className="info-text">Set maximum manpower request limit per Team Lead.</p>
 
             {teamLeads.length === 0 ? (
               <div className="empty-state">
@@ -405,57 +299,45 @@ export default function ManPowerPage() {
                   <tr>
                     <th>Team Lead</th>
                     <th>Email</th>
-                    <th>Current Assignments</th>
-                    <th>Assignment Limit</th>
+                    <th>Current Limit</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {teamLeads.map((tl) => (
                     <tr key={tl.id}>
-                      <td>{tl.name}</td>
+                      <td>{tl.name || tl.email.split('@')[0]}</td>
                       <td>{tl.email}</td>
-                      <td>
-                        <span className={`assignment-count ${tl.currentAssignments >= tl.tlAssignmentLimit ? 'limit-reached' : ''}`}>
-                          {tl.currentAssignments}
-                        </span>
-                      </td>
                       <td>
                         {editingTlId === tl.id ? (
                           <input
                             type="number"
                             min="1"
-                            max="50"
+                            max="200"
                             value={newLimit}
-                            onChange={(e) => setNewLimit(parseInt(e.target.value))}
+                            onChange={(e) => setNewLimit(Number(e.target.value))}
                             className="limit-input"
                           />
                         ) : (
-                          <span className="current-limit">{tl.tlAssignmentLimit}</span>
+                          <span className="current-limit">{tl.tlAssignmentLimit || 5}</span>
                         )}
                       </td>
                       <td>
                         {editingTlId === tl.id ? (
                           <>
-                            <button 
-                              onClick={() => handleUpdateTLLimit(tl.id)} 
-                              className="btn-save"
-                            >
+                            <button onClick={() => handleUpdateTLLimit(tl.id)} className="btn-save">
                               Save
                             </button>
-                            <button 
-                              onClick={() => setEditingTlId(null)} 
-                              className="btn-cancel"
-                            >
+                            <button onClick={() => setEditingTlId(null)} className="btn-cancel">
                               Cancel
                             </button>
                           </>
                         ) : (
-                          <button 
+                          <button
                             onClick={() => {
                               setEditingTlId(tl.id)
-                              setNewLimit(tl.tlAssignmentLimit)
-                            }} 
+                              setNewLimit(tl.tlAssignmentLimit || 5)
+                            }}
                             className="btn-edit"
                           >
                             Edit Limit

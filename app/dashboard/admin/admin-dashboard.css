@@ -1,17 +1,37 @@
 /* MASTER ADMIN DASHBOARD STYLES */
-.dashboard-container {
+.admin-dashboard-container {
   display: flex;
   min-height: 100vh;
   background-color: #f5f5f5;
+  background-image: url('/logo.jpg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: 100%;
+  background-attachment: fixed;
+  position: relative;
 }
 
-.dashboard-content {
+.admin-dashboard-container::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.admin-dashboard-content {
   flex: 1;
   padding: 30px;
   overflow-y: auto;
+  position: relative;
+  z-index: 1;
 }
 
-.dashboard-content h1 {
+.admin-dashboard-content h1 {
   font-size: 28px;
   color: #333;
   margin: 0 0 5px 0;
@@ -26,7 +46,7 @@
   padding-bottom: 15px;
 }
 
-.loading-state {
+.admin-loading-state {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -99,7 +119,7 @@
 /* Progress Bar */
 .progress-bar {
   height: 6px;
-  background: #e0e0e0;
+  background: #6a0202;
   border-radius: 3px;
   margin-top: 8px;
   overflow: hidden;
@@ -114,15 +134,15 @@
 
 /* Quick Actions */
 .quick-actions {
-  background: white;
+  background: #880808;
   border-radius: 10px;
   padding: 25px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 10px rgba(240, 231, 231, 0.05);
 }
 
 .quick-actions h2 {
   font-size: 18px;
-  color: #333;
+  color: #f5efef;
   margin: 0 0 20px 0;
   font-weight: 600;
 }
@@ -171,13 +191,32 @@
   transition: color 0.3s;
 }
 
+/* Interactive Layer */
+.admin-dashboard-content :is(button, a, input, select) {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.admin-dashboard-content :is(button, a):active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.admin-dashboard-content :is(button, a, input, select):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(136, 8, 8, 0.18);
+  border-color: #880808;
+}
+
+.stat-card {
+  cursor: default;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
-  .dashboard-content {
+  .admin-dashboard-content {
     padding: 20px;
   }
 
-  .dashboard-content h1 {
+  .admin-dashboard-content h1 {
     font-size: 24px;
   }
 

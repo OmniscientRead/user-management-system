@@ -317,11 +317,10 @@ class DataService {
 
   private async getDefaultUsers(): Promise<User[]> {
     const defaultUsers: User[] = [
-      { id: 1, email: 'admin@company.com', role: 'admin', createdAt: new Date().toISOString() },
-      { id: 2, email: 'boss@company.com', role: 'boss', createdAt: new Date().toISOString() },
-      { id: 3, email: 'hr@company.com', role: 'hr', createdAt: new Date().toISOString() },
-      { id: 4, email: 'tl1@company.com', role: 'team-lead', createdAt: new Date().toISOString() },
-      { id: 5, email: 'tl2@company.com', role: 'team-lead', createdAt: new Date().toISOString() },
+      { id: 1, email: 'admin@constantinolawoffice.com', role: 'admin', createdAt: new Date().toISOString() },
+      { id: 2, email: 'boss@constantinolawoffice.com', role: 'boss', createdAt: new Date().toISOString() },
+      { id: 3, email: 'hr@constantinolawoffice.com', role: 'hr', createdAt: new Date().toISOString() },
+      { id: 4, email: 'tl@constantinolawoffice.com', role: 'team-lead', createdAt: new Date().toISOString() },
     ]
     
     // Save to database

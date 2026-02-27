@@ -1,0 +1,33 @@
+/* app/dashboard/team-lead/assignments/assignments.css */
+.message-banner {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.message-banner.success {
+  background: #e9f7ee;
+  color: #1e7b38;
+  border: 1px solid #9ed5ae;
+}
+
+.message-banner.error {
+  background: #fdeeee;
+  color: #9f1d1d;
+  border: 1px solid #efb5b5;
+}
+
+.tl-assignments-table-wrapper {
+  overflow-x: auto;
+}
+
+.tl-assignments-table {
+  min-width: 980px;
+}
+
+.tl-assignments-table .btn-assign {
+  padding: 8px 12px;
+  font-size: 12px;
+}

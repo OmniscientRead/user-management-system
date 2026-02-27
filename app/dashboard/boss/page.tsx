@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { getAllApplicants, updateApplicantStatus } from '@/lib/db'
+import { openPdfInNewTab } from '@/lib/pdf'
 import './boss-dashboard.css'
 
 interface Applicant {
@@ -13,6 +14,7 @@ interface Applicant {
   age: number
   education: string
   course: string
+  positionAppliedFor?: string
   collectionExperience: string
   referral: string
   resumeData: string
@@ -58,9 +60,7 @@ export default function BossDashboard() {
   const loadPendingApplicants = async () => {
     try {
       const allApplicants = await getAllApplicants()
-      const pending = allApplicants.filter(
-        (app: Applicant) => app.status === 'pending'
-      )
+      const pending = allApplicants.filter((app: Applicant) => app.status === 'pending')
       setPendingApplicants(pending)
     } catch (error) {
       console.error('Error loading applicants:', error)
@@ -70,7 +70,7 @@ export default function BossDashboard() {
   const handleApprove = async (id: number) => {
     try {
       await updateApplicantStatus(id, 'approved')
-      setPendingApplicants(pendingApplicants.filter(app => app.id !== id))
+      setPendingApplicants(pendingApplicants.filter((app) => app.id !== id))
     } catch (error) {
       console.error('Error approving applicant:', error)
     }
@@ -79,7 +79,7 @@ export default function BossDashboard() {
   const handleReject = async (id: number) => {
     try {
       await updateApplicantStatus(id, 'rejected')
-      setPendingApplicants(pendingApplicants.filter(app => app.id !== id))
+      setPendingApplicants(pendingApplicants.filter((app) => app.id !== id))
     } catch (error) {
       console.error('Error rejecting applicant:', error)
     }
@@ -93,24 +93,24 @@ export default function BossDashboard() {
     setSelectedImage(null)
   }
 
-  if (loading) return (
-    <div className="dashboard-container">
-      <Sidebar role="boss" userName={user?.email || ''} />
-      <div className="dashboard-content">
-        <div className="loading-state">Loading...</div>
+  if (loading)
+    return (
+      <div className="dashboard-container">
+        <Sidebar role="boss" userName={user?.email || ''} />
+        <div className="dashboard-content">
+          <div className="loading-state">Loading...</div>
+        </div>
       </div>
-    </div>
-  )
+    )
 
   return (
     <div className="dashboard-container">
       <Sidebar role="boss" userName={user?.email || ''} />
-      
+
       <div className="dashboard-content">
         <h1>Boss Dashboard</h1>
         <p className="subtitle">Review and approve/reject applicants from HR</p>
 
-        {/* Status Badge */}
         <div className="status-container">
           <div className="status-badge-large">
             <span className="status-label">Pending Review</span>
@@ -118,13 +118,12 @@ export default function BossDashboard() {
           </div>
         </div>
 
-        {/* Applicant Profiles Grid */}
         <div className="profiles-section">
           <h2 className="section-title">Applicants Awaiting Your Decision</h2>
-          
+
           {pendingApplicants.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-icon">✅</div>
+              <div className="empty-icon">OK</div>
               <p>No pending applicants to review</p>
               <span className="empty-subtext">All caught up!</span>
             </div>
@@ -134,75 +133,74 @@ export default function BossDashboard() {
                 <div key={applicant.id} className="profile-card">
                   <div className="profile-card-header">
                     {applicant.pictureData ? (
-                      <img 
-                        src={applicant.pictureData} 
+                      <img
+                        src={applicant.pictureData}
                         alt={applicant.name}
                         className="profile-card-image clickable-image"
                         onClick={() => handleImageClick(applicant.pictureData, applicant.name)}
                       />
                     ) : (
-                      <div 
+                      <div
                         className="profile-card-initials clickable-initials"
                         onClick={() => handleImageClick('', applicant.name)}
                       >
-                        {applicant.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                        {applicant.name
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .toUpperCase()}
                       </div>
                     )}
                     <div className="profile-card-status">
                       <span className="status-badge status-pending">PENDING</span>
                     </div>
                   </div>
-                  
+
                   <div className="profile-card-body">
                     <h3 className="profile-card-name">{applicant.name}</h3>
-                    
+
                     <div className="profile-card-details">
                       <div className="detail-item">
-                        <span className="detail-icon">🎂</span>
+                        <span className="detail-icon">Age</span>
                         <span className="detail-text">{applicant.age} years</span>
                       </div>
                       <div className="detail-item">
-                        <span className="detail-icon">🎓</span>
+                        <span className="detail-icon">Education</span>
                         <span className="detail-text">{applicant.education}</span>
                       </div>
                       <div className="detail-item">
-                        <span className="detail-icon">📚</span>
+                        <span className="detail-icon">Course</span>
                         <span className="detail-text">{applicant.course}</span>
                       </div>
                       <div className="detail-item">
-                        <span className="detail-icon">💼</span>
+                        <span className="detail-icon">Position</span>
+                        <span className="detail-text">{applicant.positionAppliedFor || 'Not specified'}</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-icon">Experience</span>
                         <span className="detail-text">{applicant.collectionExperience}</span>
                       </div>
                       {applicant.referral && (
                         <div className="detail-item">
-                          <span className="detail-icon">🤝</span>
+                          <span className="detail-icon">Referral</span>
                           <span className="detail-text">Referred by: {applicant.referral}</span>
                         </div>
                       )}
                     </div>
 
                     <div className="profile-card-actions">
-                      <button
-                        onClick={() => window.open(applicant.resumeData, '_blank')}
-                        className="btn-view-resume"
-                      >
-                        📄 View Resume
+                      <button onClick={() => openPdfInNewTab(applicant.resumeData)} className="btn-view-resume">
+                        View Resume
                       </button>
                     </div>
                   </div>
 
                   <div className="profile-card-footer">
-                    <button
-                      onClick={() => handleApprove(applicant.id)}
-                      className="btn-approve-card"
-                    >
-                      ✓ Approve
+                    <button onClick={() => handleApprove(applicant.id)} className="btn-approve-card">
+                      Approve
                     </button>
-                    <button
-                      onClick={() => handleReject(applicant.id)}
-                      className="btn-reject-card"
-                    >
-                      ✗ Reject
+                    <button onClick={() => handleReject(applicant.id)} className="btn-reject-card">
+                      Reject
                     </button>
                   </div>
                 </div>
@@ -212,20 +210,17 @@ export default function BossDashboard() {
         </div>
       </div>
 
-      {/* Image Modal */}
       {selectedImage && (
         <div className="image-modal" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={closeModal}>×</button>
+            <button className="modal-close" onClick={closeModal}>
+              x
+            </button>
             {selectedImage.src ? (
-              <img 
-                src={selectedImage.src} 
-                alt={selectedImage.name}
-                className="modal-image"
-              />
+              <img src={selectedImage.src} alt={selectedImage.name} className="modal-image" />
             ) : (
               <div className="modal-no-image">
-                <div className="no-image-icon">👤</div>
+                <div className="no-image-icon">User</div>
                 <p>No profile picture available for {selectedImage.name}</p>
               </div>
             )}

@@ -1,140 +1,100 @@
-// IndexedDB utility for storing applicant data with files
-const DB_NAME = 'applicant_db'
-const DB_VERSION = 2
-const STORE_NAME = 'applicants'
-const ASSIGNMENTS_STORE = 'assignments'
+import { api } from '@/lib/api'
 
-let db: IDBDatabase | null = null
-
-export const initDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    if (db) {
-      resolve(db)
-      return
-    }
-
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => {
-      db = request.result
-      resolve(db)
-    }
-
-    request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result
-      if (!database.objectStoreNames.contains(STORE_NAME)) {
-        const store = database.createObjectStore(STORE_NAME, { keyPath: 'id' })
-        store.createIndex('status', 'status', { unique: false })
-        store.createIndex('addedDate', 'addedDate', { unique: false })
-      }
-      if (!database.objectStoreNames.contains(ASSIGNMENTS_STORE)) {
-        const store = database.createObjectStore(ASSIGNMENTS_STORE, {
-          keyPath: 'id',
-        })
-        store.createIndex('applicantId', 'applicantId', { unique: false })
-        store.createIndex('assignedDate', 'assignedDate', { unique: false })
-        store.createIndex('tlEmail', 'tlEmail', { unique: false })
-      }
-    }
-  })
-}
+export const initDB = async (): Promise<null> => null
 
 export const addApplicant = async (applicantData: any): Promise<void> => {
-  const database = await initDB()
-  return new Promise((resolve, reject) => {
-    const transaction = database.transaction([STORE_NAME], 'readwrite')
-    const store = transaction.objectStore(STORE_NAME)
-    const request = store.add(applicantData)
+  await api.postEntity('applicants', applicantData)
+}
 
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve()
-  })
+export const putApplicant = async (applicantData: any): Promise<void> => {
+  await api.putEntity('applicants', applicantData)
 }
 
 export const getAllApplicants = async (): Promise<any[]> => {
-  const database = await initDB()
-  return new Promise((resolve, reject) => {
-    const transaction = database.transaction([STORE_NAME], 'readonly')
-    const store = transaction.objectStore(STORE_NAME)
-    const request = store.getAll()
-
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result)
-  })
+  return api.getEntity<any[]>('applicants')
 }
 
 export const updateApplicantStatus = async (
   id: number,
   status: string
 ): Promise<void> => {
-  const database = await initDB()
-  return new Promise((resolve, reject) => {
-    const transaction = database.transaction([STORE_NAME], 'readwrite')
-    const store = transaction.objectStore(STORE_NAME)
-    const getRequest = store.get(id)
+  await api.putEntity('applicants', { id, status })
+}
 
-    getRequest.onsuccess = () => {
-      const applicant = getRequest.result
-      if (applicant) {
-        applicant.status = status
-        const updateRequest = store.put(applicant)
-        updateRequest.onerror = () => reject(updateRequest.error)
-        updateRequest.onsuccess = () => resolve()
-      } else {
-        reject(new Error('Applicant not found'))
-      }
-    }
-    getRequest.onerror = () => reject(getRequest.error)
-  })
+export const deleteApplicant = async (id: number): Promise<void> => {
+  await api.deleteEntity('applicants', id)
 }
 
 export const getApplicantsByStatus = async (status: string): Promise<any[]> => {
-  const database = await initDB()
-  return new Promise((resolve, reject) => {
-    const transaction = database.transaction([STORE_NAME], 'readonly')
-    const store = transaction.objectStore(STORE_NAME)
-    const index = store.index('status')
-    const request = index.getAll(status)
-
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result)
-  })
+  const all = await getAllApplicants()
+  return all.filter((item) => item.status === status)
 }
 
 export const addAssignment = async (assignmentData: any): Promise<void> => {
-  const database = await initDB()
-  return new Promise((resolve, reject) => {
-    const transaction = database.transaction([ASSIGNMENTS_STORE], 'readwrite')
-    const store = transaction.objectStore(ASSIGNMENTS_STORE)
-    const request = store.add(assignmentData)
+  await api.postEntity('assignments', assignmentData)
+}
 
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve()
-  })
+export const putAssignment = async (assignmentData: any): Promise<void> => {
+  await api.putEntity('assignments', assignmentData)
+}
+
+export const deleteAssignment = async (id: number): Promise<void> => {
+  await api.deleteEntity('assignments', id)
 }
 
 export const getAllAssignments = async (): Promise<any[]> => {
-  const database = await initDB()
-  return new Promise((resolve, reject) => {
-    const transaction = database.transaction([ASSIGNMENTS_STORE], 'readonly')
-    const store = transaction.objectStore(ASSIGNMENTS_STORE)
-    const request = store.getAll()
-
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result)
-  })
+  return api.getEntity<any[]>('assignments')
 }
 
 export const getAssignmentsByTL = async (tlEmail: string): Promise<any[]> => {
-  const database = await initDB()
-  return new Promise((resolve, reject) => {
-    const transaction = database.transaction([ASSIGNMENTS_STORE], 'readonly')
-    const store = transaction.objectStore(ASSIGNMENTS_STORE)
-    const index = store.index('tlEmail')
-    const request = index.getAll(tlEmail)
+  const all = await getAllAssignments()
+  return all.filter((item) => item.tlEmail === tlEmail)
+}
 
-    request.onerror = () => reject(request.error)
-    request.onsuccess = () => resolve(request.result)
-  })
+export const getAllUsers = async (): Promise<any[]> => {
+  return api.getEntity<any[]>('users')
+}
+
+export const addUser = async (userData: any): Promise<void> => {
+  await api.postEntity('users', userData)
+}
+
+export const putUser = async (userData: any): Promise<void> => {
+  await api.putEntity('users', userData)
+}
+
+export const deleteUser = async (id: number): Promise<void> => {
+  await api.deleteEntity('users', id)
+}
+
+export const getAllManpowerRequests = async (): Promise<any[]> => {
+  return api.getEntity<any[]>('manpowerRequests')
+}
+
+export const addManpowerRequest = async (requestData: any): Promise<void> => {
+  await api.postEntity('manpowerRequests', requestData)
+}
+
+export const putManpowerRequest = async (requestData: any): Promise<void> => {
+  await api.putEntity('manpowerRequests', requestData)
+}
+
+export const deleteManpowerRequest = async (id: number): Promise<void> => {
+  await api.deleteEntity('manpowerRequests', id)
+}
+
+export const getSettings = async (): Promise<{ manPowerLimit: number }> => {
+  return api.getEntity<{ manPowerLimit: number }>('settings')
+}
+
+export const updateSettings = async (settings: Partial<{ manPowerLimit: number }>): Promise<void> => {
+  await api.putEntity('settings', settings)
+}
+
+export const claimApplicant = async (
+  applicantId: number,
+  tlEmail: string,
+  assignedBy: string
+): Promise<any> => {
+  return api.claimAssignment({ applicantId, tlEmail, assignedBy })
 }

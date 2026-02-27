@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import { getAllManpowerRequests, putManpowerRequest } from '@/lib/db'
 import '../hr-dashboard.css'
 
 export default function HRManpowerPage() {
@@ -33,12 +34,9 @@ export default function HRManpowerPage() {
     loadManpowerRequests()
   }, [router])
 
-  const loadManpowerRequests = () => {
-    const savedRequests = localStorage.getItem('manpowerRequests')
-    if (savedRequests) {
-      const requests = JSON.parse(savedRequests)
-      setManpowerRequests(requests)
-    }
+  const loadManpowerRequests = async () => {
+    const requests = await getAllManpowerRequests()
+    setManpowerRequests(requests)
   }
 
   const handleSetLimit = (requestId: number, currentLimit: number | null) => {
@@ -46,7 +44,7 @@ export default function HRManpowerPage() {
     setEditLimit(currentLimit?.toString() || '')
   }
 
-  const handleSaveLimit = (requestId: number) => {
+  const handleSaveLimit = async (requestId: number) => {
     const limit = parseInt(editLimit)
     
     if (isNaN(limit) || limit < 0) {
@@ -54,20 +52,15 @@ export default function HRManpowerPage() {
       return
     }
 
-    const updatedRequests = manpowerRequests.map((req) => {
-      if (req.id === requestId) {
-        return {
-          ...req,
-          limit: limit,
-          status: limit > 0 ? 'approved' : 'rejected',
-          assignedCount: 0 // Reset assigned count when new limit is set
-        }
-      }
-      return req
-    })
-
-    setManpowerRequests(updatedRequests)
-    localStorage.setItem('manpowerRequests', JSON.stringify(updatedRequests))
+    const updatedRequest = manpowerRequests.find((req) => req.id === requestId)
+    if (updatedRequest) {
+      await putManpowerRequest({
+        ...updatedRequest,
+        limit,
+        status: limit > 0 ? 'approved' : 'rejected',
+      })
+    }
+    await loadManpowerRequests()
     setEditingId(null)
     setEditLimit('')
     setSuccessMessage(`✅ Manpower limit set to ${limit} successfully!`)

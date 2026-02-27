@@ -1,3 +1,45 @@
+﻿.admin-assignments-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  background-image: url('/logo.jpg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: 100%;
+  background-attachment: fixed;
+  position: relative;
+}
+
+.admin-assignments-container::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.admin-assignments-content {
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.admin-assignments-content h1 {
+  font-size: 28px;
+  color: #333;
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.admin-assignments-content .subtitle {
+  color: #666;
+  font-size: 14px;
+  margin: 0 0 24px;
+}
+
 /* ASSIGNMENTS MANAGEMENT STYLES */
 
 .loading-state {
@@ -226,6 +268,14 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+  .admin-assignments-content {
+    padding: 20px;
+  }
+
+  .admin-assignments-content h1 {
+    font-size: 24px;
+  }
+
   .assignment-stats {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -244,4 +294,27 @@
   .status-filter {
     width: 100%;
   }
+}
+
+/* Interactive Layer */
+.admin-assignments-content :is(button, a, input, select) {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.admin-assignments-content :is(button, a):active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.admin-assignments-content :is(button, a, input, select):focus-visible {
+  outline: none;
+  border-color: #880808;
+  box-shadow: 0 0 0 3px rgba(136, 8, 8, 0.16);
+}
+
+.assignments-table tbody tr {
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.assignments-table tbody tr:hover {
+  transform: translateY(-1px);
 }

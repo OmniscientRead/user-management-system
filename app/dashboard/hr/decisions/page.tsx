@@ -146,6 +146,7 @@ export default function HRDecisionsPage() {
                 <th>Age</th>
                 <th>Education</th>
                 <th>Course</th>
+                <th>Position Applied</th>
                 <th>Experience</th>
                 <th>Referral</th>
                 <th>Status</th>
@@ -160,6 +161,7 @@ export default function HRDecisionsPage() {
                     <td>{applicant.age}</td>
                     <td>{applicant.education}</td>
                     <td>{applicant.course}</td>
+                    <td>{applicant.positionAppliedFor || '-'}</td>
                     <td>{applicant.collectionExperience}</td>
                     <td>{applicant.referral}</td>
                     <td>
@@ -175,7 +177,7 @@ export default function HRDecisionsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="empty-message">
+                  <td colSpan="9" className="empty-message">
                     No decisions found matching your filters
                   </td>
                 </tr>

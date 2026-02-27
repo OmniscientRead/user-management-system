@@ -1,3 +1,45 @@
+﻿.admin-applicants-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  background-image: url('/logo.jpg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: 100%;
+  background-attachment: fixed;
+  position: relative;
+}
+
+.admin-applicants-container::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.admin-applicants-content {
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.admin-applicants-content h1 {
+  font-size: 28px;
+  color: #333;
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.admin-applicants-content .subtitle {
+  color: #666;
+  font-size: 14px;
+  margin: 0 0 24px;
+}
+
 /* APPLICANTS MANAGEMENT STYLES */
 
 .loading-state {
@@ -83,6 +125,27 @@
   gap: 15px;
   margin-bottom: 20px;
   flex-wrap: wrap;
+}
+
+.applicants-actions {
+  margin-bottom: 16px;
+}
+
+.btn-add-applicant {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #880808;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.btn-add-applicant:hover {
+  background: #6b0606;
+  transform: translateY(-1px);
 }
 
 .search-input {
@@ -229,16 +292,40 @@
 }
 
 .btn-view, .btn-approve, .btn-reject, .btn-delete {
-  width: 36px;
-  height: 36px;
+  min-width: 78px;
+  height: 34px;
+  padding: 0 12px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
   transition: all 0.3s;
+}
+
+.position-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: #fff;
+  cursor: pointer;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #880808 50%), linear-gradient(135deg, #880808 50%, transparent 50%);
+  background-position: calc(100% - 16px) calc(50% - 2px), calc(100% - 10px) calc(50% - 2px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+
+.position-select:focus {
+  outline: none;
+  border-color: #880808;
+  box-shadow: 0 0 0 3px rgba(136, 8, 8, 0.1);
 }
 
 .btn-view {
@@ -295,6 +382,10 @@
 .assign-select:focus {
   outline: none;
   border-color: #880808;
+}
+
+.add-applicant-form {
+  margin-bottom: 20px;
 }
 
 /* Modal Styles */
@@ -408,6 +499,14 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+  .admin-applicants-content {
+    padding: 20px;
+  }
+
+  .admin-applicants-content h1 {
+    font-size: 24px;
+  }
+
   .applicant-stats {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -417,9 +516,9 @@
   }
 
   .btn-view, .btn-approve, .btn-reject, .btn-delete {
-    width: 32px;
+    min-width: 72px;
     height: 32px;
-    font-size: 14px;
+    font-size: 11px;
   }
 
   .assign-select {
@@ -445,3 +544,119 @@
     width: 100%;
   }
 }
+/* Add Applicant Form (Admin) */
+.add-applicant-form {
+  background: #ffffff;
+  border: 1px solid #e6e6e6;
+  border-radius: 12px;
+  padding: 22px;
+  margin-bottom: 22px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.add-applicant-form h2 {
+  margin: 0 0 16px;
+  font-size: 20px;
+  color: #262626;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 10px;
+}
+
+.add-applicant-form form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 14px 16px;
+}
+
+.add-applicant-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.add-applicant-form .form-group label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: #5a5a5a;
+  text-transform: uppercase;
+}
+
+.add-applicant-form .form-group input,
+.add-applicant-form .form-group select {
+  width: 100%;
+  height: 40px;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 14px;
+  background: #fff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.add-applicant-form .form-group input:focus,
+.add-applicant-form .form-group select:focus {
+  outline: none;
+  border-color: #880808;
+  box-shadow: 0 0 0 3px rgba(136, 8, 8, 0.12);
+}
+
+.add-applicant-form .form-group input[type='file'] {
+  height: auto;
+  padding: 8px 10px;
+}
+
+.add-applicant-form .position-select {
+  background-image: linear-gradient(45deg, transparent 50%, #880808 50%), linear-gradient(135deg, #880808 50%, transparent 50%);
+  background-position: calc(100% - 16px) calc(50% - 2px), calc(100% - 10px) calc(50% - 2px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  appearance: none;
+}
+
+.add-applicant-form .btn-approve {
+  grid-column: 1 / -1;
+  justify-self: start;
+  min-width: 170px;
+  height: 42px;
+  border-radius: 8px;
+}
+
+.add-applicant-form .btn-approve:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .add-applicant-form form {
+    grid-template-columns: 1fr;
+  }
+
+  .add-applicant-form .btn-approve {
+    width: 100%;
+  }
+}
+
+/* Interactive Layer */
+.admin-applicants-content :is(button, a, input, select) {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.admin-applicants-content :is(button, a):active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.admin-applicants-content :is(button, a, input, select):focus-visible {
+  outline: none;
+  border-color: #880808;
+  box-shadow: 0 0 0 3px rgba(136, 8, 8, 0.16);
+}
+
+.applicants-table tbody tr {
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.applicants-table tbody tr:hover {
+  transform: translateY(-1px);
+}
+

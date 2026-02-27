@@ -1,51 +1,78 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import { addManpowerRequest, getAllManpowerRequests } from '@/lib/db'
+import { POSITION_OPTIONS } from '@/lib/positions'
 import '../team-lead-dashboard.css'
+
+type TLUser = {
+  id?: number
+  email: string
+  role: 'team-lead'
+}
+
+type ManpowerRequest = {
+  id: number
+  position: string
+  requestedCount: number
+  approvedCount: number
+  assignedCount: number
+  limit: number | null
+  status: 'pending' | 'approved' | 'rejected'
+  date: string
+  createdAt: string
+  teamLeadEmail: string
+  teamLeadName: string
+  tlId: number | null
+  pdfFileName: string
+  pdfData: string
+}
 
 export default function TeamLeadManpowerPage() {
   const router = useRouter()
-  const [user, setUser] = useState(null)
-  const [manpowerRequests, setManpowerRequests] = useState([])
+  const [user, setUser] = useState<TLUser | null>(null)
+  const [manpowerRequests, setManpowerRequests] = useState<ManpowerRequest[]>([])
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
     position: '',
     requestedCount: '',
-    pdfFile: null,
+    pdfFile: null as File | null,
   })
   const [successMessage, setSuccessMessage] = useState('')
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user')
-    if (!storedUser) {
-      router.push('/')
-      return
-    }
+    const initialize = async () => {
+      const storedUser = localStorage.getItem('user')
+      if (!storedUser) {
+        router.push('/')
+        return
+      }
 
-    const userData = JSON.parse(storedUser)
-    if (userData.role !== 'team-lead') {
-      router.push('/')
-      return
-    }
+      const userData = JSON.parse(storedUser)
+      if (userData.role !== 'team-lead') {
+        router.push('/')
+        return
+      }
 
-    setUser(userData)
+      const tlUser: TLUser = {
+        id: typeof userData.id === 'number' ? userData.id : undefined,
+        email: userData.email,
+        role: 'team-lead',
+      }
 
-    // Load manpower requests from localStorage
-    const savedRequests = localStorage.getItem('manpowerRequests')
-    if (savedRequests) {
-      const allRequests = JSON.parse(savedRequests)
-      // Filter only this team lead's requests
-      const tlRequests = allRequests.filter(
-        (req) => req.teamLeadEmail === userData.email
-      )
+      setUser(tlUser)
+
+      const allRequests = await getAllManpowerRequests()
+      const tlRequests = allRequests.filter((req) => req.teamLeadEmail === tlUser.email)
       setManpowerRequests(tlRequests)
     }
+
+    initialize()
   }, [router])
 
-  // Handle form input changes
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({
       ...prev,
@@ -53,66 +80,83 @@ export default function TeamLeadManpowerPage() {
     }))
   }
 
-  // Handle file input
-  const handleFileChange = (e) => {
-    const file = e.target.files[0]
-    if (file && file.type === 'application/pdf') {
-      setFormData((prev) => ({
-        ...prev,
-        pdfFile: file,
-      }))
-    } else {
-      alert('Please upload a valid PDF file')
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    if (!file) {
+      setFormData((prev) => ({ ...prev, pdfFile: null }))
+      return
     }
+
+    if (file.type !== 'application/pdf') {
+      alert('Please upload a valid PDF file')
+      return
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      pdfFile: file,
+    }))
   }
 
-  // Submit manpower request
-  const handleSubmitRequest = (e) => {
+  const handleSubmitRequest = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+
+    if (!user) {
+      alert('User session not found. Please login again.')
+      return
+    }
 
     if (!formData.position || !formData.requestedCount || !formData.pdfFile) {
       alert('Please fill in all fields and select a PDF file')
       return
     }
 
-    // Read file and convert to base64
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      const pdfBase64 = event.target.result
+    const requestedCount = Number(formData.requestedCount)
+    if (!Number.isFinite(requestedCount) || requestedCount <= 0) {
+      alert('Requested count must be a valid number greater than 0')
+      return
+    }
 
-      // Create new request with PDF data
-      const newRequest = {
+    const reader = new FileReader()
+
+    reader.onerror = () => {
+      alert('Failed to read PDF file. Please try again.')
+    }
+
+    reader.onload = async () => {
+      const pdfBase64 = typeof reader.result === 'string' ? reader.result : ''
+      if (!pdfBase64) {
+        alert('Invalid PDF data. Please try another file.')
+        return
+      }
+
+      const newRequest: ManpowerRequest = {
         id: Date.now(),
         position: formData.position,
-        requestedCount: parseInt(formData.requestedCount),
+        requestedCount,
         approvedCount: 0,
         assignedCount: 0,
         limit: null,
         status: 'pending',
         date: new Date().toISOString().split('T')[0],
+        createdAt: new Date().toISOString(),
         teamLeadEmail: user.email,
         teamLeadName: user.email.split('@')[0],
-        pdfFileName: formData.pdfFile.name,
-        pdfData: pdfBase64, // Store the base64 encoded PDF
+        tlId: user.id ?? null,
+        pdfFileName: formData.pdfFile?.name || 'request.pdf',
+        pdfData: pdfBase64,
       }
 
-      // Add to localStorage
-      const savedRequests = localStorage.getItem('manpowerRequests')
-      const allRequests = savedRequests ? JSON.parse(savedRequests) : []
-      allRequests.push(newRequest)
-      localStorage.setItem('manpowerRequests', JSON.stringify(allRequests))
-
-      // Update state
-      setManpowerRequests([...manpowerRequests, newRequest])
-
-      // Reset form
+      await addManpowerRequest(newRequest)
+      const allRequests = await getAllManpowerRequests()
+      const updatedTLRequests = allRequests.filter((req) => req.teamLeadEmail === user.email)
+      setManpowerRequests(updatedTLRequests)
       setFormData({ position: '', requestedCount: '', pdfFile: null })
       setShowForm(false)
       setSuccessMessage('Manpower request submitted successfully!')
-
-      // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(''), 3000)
     }
+
     reader.readAsDataURL(formData.pdfFile)
   }
 
@@ -176,9 +220,7 @@ export default function TeamLeadManpowerPage() {
               border: '1px solid #ddd',
             }}
           >
-            <h3 style={{ marginTop: 0, marginBottom: '15px' }}>
-              Submit Manpower Request
-            </h3>
+            <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Submit Manpower Request</h3>
             <form onSubmit={handleSubmitRequest}>
               <div
                 style={{
@@ -189,34 +231,39 @@ export default function TeamLeadManpowerPage() {
                 }}
               >
                 <div style={{ flex: '1', minWidth: '200px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px' }}>
-                    Position Name
-                  </label>
-                  <input
-                    type="text"
+                  <label style={{ display: 'block', marginBottom: '5px' }}>Position Name *</label>
+                  <select
                     name="position"
                     value={formData.position}
                     onChange={handleInputChange}
-                    placeholder="e.g., Software Developer"
+                    required
                     style={{
                       width: '100%',
                       padding: '8px',
                       border: '1px solid #ddd',
                       borderRadius: '4px',
                       boxSizing: 'border-box',
+                      backgroundColor: 'white',
+                      cursor: 'pointer',
                     }}
-                  />
+                  >
+                    <option value="" disabled>Select a position</option>
+                    {POSITION_OPTIONS.map((position) => (
+                      <option key={position} value={position}>
+                        {position}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div style={{ flex: '1', minWidth: '200px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px' }}>
-                    Number of Positions Needed
-                  </label>
+                  <label style={{ display: 'block', marginBottom: '5px' }}>Number of Positions Needed *</label>
                   <input
                     type="number"
                     name="requestedCount"
                     value={formData.requestedCount}
                     onChange={handleInputChange}
                     min="1"
+                    required
                     style={{
                       width: '100%',
                       padding: '8px',
@@ -229,13 +276,12 @@ export default function TeamLeadManpowerPage() {
               </div>
 
               <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px' }}>
-                  Upload Manpower Request (PDF)
-                </label>
+                <label style={{ display: 'block', marginBottom: '5px' }}>Upload Manpower Request (PDF) *</label>
                 <input
                   type="file"
                   accept=".pdf"
                   onChange={handleFileChange}
+                  required
                   style={{
                     padding: '8px',
                     border: '1px solid #ddd',
@@ -250,7 +296,7 @@ export default function TeamLeadManpowerPage() {
                       fontSize: '14px',
                     }}
                   >
-                    ✓ {formData.pdfFile.name}
+                    {formData.pdfFile.name}
                   </p>
                 )}
               </div>
@@ -295,11 +341,7 @@ export default function TeamLeadManpowerPage() {
                     <td>{request.limit !== null ? request.limit : 'Pending'}</td>
                     <td>{request.assignedCount}</td>
                     <td>
-                      <span
-                        className={`status-badge status-${request.status}`}
-                      >
-                        {request.status.toUpperCase()}
-                      </span>
+                      <span className={`status-badge status-${request.status}`}>{request.status.toUpperCase()}</span>
                     </td>
                     <td>
                       <a
@@ -318,7 +360,7 @@ export default function TeamLeadManpowerPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="empty-message">
+                  <td colSpan={7} className="empty-message">
                     No manpower requests yet
                   </td>
                 </tr>

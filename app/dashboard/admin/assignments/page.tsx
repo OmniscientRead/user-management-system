@@ -1,8 +1,9 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import { deleteAssignment, getAllAssignments, putAssignment } from '@/lib/db'
 import './assignments.css'
 
 interface Assignment {
@@ -10,8 +11,10 @@ interface Assignment {
   applicantId: number
   applicantName: string
   tlEmail: string
+  tlName?: string
   assignedBy: string
   assignedDate: string
+  positionAppliedFor?: string
   status: 'active' | 'completed' | 'cancelled'
   completionDate?: string
   notes?: string
@@ -42,77 +45,74 @@ export default function AdminAssignmentsPage() {
     loadAssignments()
   }, [router])
 
-  const loadAssignments = () => {
-    const storedAssignments = localStorage.getItem('assignments')
-    if (storedAssignments) {
-      setAssignments(JSON.parse(storedAssignments))
-    }
+  const loadAssignments = async () => {
+    const allAssignments = await getAllAssignments()
+    setAssignments(allAssignments)
   }
 
-  const handleCancelAssignment = (id: number) => {
-    if (confirm('Are you sure you want to cancel this assignment?')) {
-      const updatedAssignments = assignments.map(a =>
-        a.id === id ? { ...a, status: 'cancelled' as const } : a
-      )
-      setAssignments(updatedAssignments)
-      localStorage.setItem('assignments', JSON.stringify(updatedAssignments))
-      setMessage({ text: '✓ Assignment cancelled', type: 'success' })
-      setTimeout(() => setMessage({ text: '', type: '' }), 3000)
-    }
-  }
+  const handleCancelAssignment = async (id: number) => {
+    if (!confirm('Are you sure you want to cancel this assignment?')) return
 
-  const handleCompleteAssignment = (id: number) => {
-    const updatedAssignments = assignments.map(a =>
-      a.id === id ? { ...a, status: 'completed' as const, completionDate: new Date().toISOString() } : a
-    )
-    setAssignments(updatedAssignments)
-    localStorage.setItem('assignments', JSON.stringify(updatedAssignments))
-    setMessage({ text: '✓ Assignment marked as completed', type: 'success' })
+    const target = assignments.find((a) => a.id === id)
+    if (!target) return
+
+    await putAssignment({ ...target, status: 'cancelled' })
+    await loadAssignments()
+    setMessage({ text: 'Assignment cancelled', type: 'success' })
     setTimeout(() => setMessage({ text: '', type: '' }), 3000)
   }
 
-  const handleDeleteAssignment = (id: number) => {
-    if (confirm('Are you sure you want to delete this assignment record?')) {
-      const updatedAssignments = assignments.filter(a => a.id !== id)
-      setAssignments(updatedAssignments)
-      localStorage.setItem('assignments', JSON.stringify(updatedAssignments))
-      setMessage({ text: '✓ Assignment deleted', type: 'success' })
-      setTimeout(() => setMessage({ text: '', type: '' }), 3000)
-    }
+  const handleCompleteAssignment = async (id: number) => {
+    const target = assignments.find((a) => a.id === id)
+    if (!target) return
+
+    await putAssignment({
+      ...target,
+      status: 'completed',
+      completionDate: new Date().toISOString(),
+    })
+    await loadAssignments()
+    setMessage({ text: 'Assignment marked as completed', type: 'success' })
+    setTimeout(() => setMessage({ text: '', type: '' }), 3000)
   }
 
-  // Filter assignments
-  const filteredAssignments = assignments.filter(a => {
-    const matchesSearch = a.applicantName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         a.tlEmail.toLowerCase().includes(searchTerm.toLowerCase())
+  const handleDeleteAssignment = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this assignment record?')) return
+
+    await deleteAssignment(id)
+    await loadAssignments()
+    setMessage({ text: 'Assignment deleted', type: 'success' })
+    setTimeout(() => setMessage({ text: '', type: '' }), 3000)
+  }
+
+  const filteredAssignments = assignments.filter((a) => {
+    const matchesSearch =
+      a.applicantName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.tlEmail.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || a.status === statusFilter
     return matchesSearch && matchesStatus
   })
 
-  if (!user) return (
-    <div className="dashboard-container">
-      <Sidebar role="admin" userName="Admin" />
-      <div className="dashboard-content">
-        <div className="loading-state">Loading...</div>
+  if (!user)
+    return (
+      <div className="admin-assignments-container">
+        <Sidebar role="admin" userName="Admin" />
+        <div className="admin-assignments-content">
+          <div className="loading-state">Loading...</div>
+        </div>
       </div>
-    </div>
-  )
+    )
 
   return (
-    <div className="dashboard-container">
+    <div className="admin-assignments-container">
       <Sidebar role="admin" userName={user.email} />
-      
-      <div className="dashboard-content">
+
+      <div className="admin-assignments-content">
         <h1>All Assignments</h1>
         <p className="subtitle">View and manage all applicant assignments</p>
 
-        {message.text && (
-          <div className={`message message-${message.type}`}>
-            {message.text}
-          </div>
-        )}
+        {message.text && <div className={`message message-${message.type}`}>{message.text}</div>}
 
-        {/* Stats */}
         <div className="assignment-stats">
           <div className="stat-item">
             <span className="stat-label">Total</span>
@@ -120,25 +120,18 @@ export default function AdminAssignmentsPage() {
           </div>
           <div className="stat-item">
             <span className="stat-label">Active</span>
-            <span className="stat-value active">
-              {assignments.filter(a => a.status === 'active').length}
-            </span>
+            <span className="stat-value active">{assignments.filter((a) => a.status === 'active').length}</span>
           </div>
           <div className="stat-item">
             <span className="stat-label">Completed</span>
-            <span className="stat-value completed">
-              {assignments.filter(a => a.status === 'completed').length}
-            </span>
+            <span className="stat-value completed">{assignments.filter((a) => a.status === 'completed').length}</span>
           </div>
           <div className="stat-item">
             <span className="stat-label">Cancelled</span>
-            <span className="stat-value cancelled">
-              {assignments.filter(a => a.status === 'cancelled').length}
-            </span>
+            <span className="stat-value cancelled">{assignments.filter((a) => a.status === 'cancelled').length}</span>
           </div>
         </div>
 
-        {/* Filters */}
         <div className="filters-bar">
           <input
             type="text"
@@ -147,11 +140,7 @@ export default function AdminAssignmentsPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
           />
-          <select 
-            value={statusFilter} 
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="status-filter"
-          >
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="status-filter">
             <option value="all">All Status</option>
             <option value="active">Active</option>
             <option value="completed">Completed</option>
@@ -159,13 +148,13 @@ export default function AdminAssignmentsPage() {
           </select>
         </div>
 
-        {/* Assignments Table */}
         <div className="assignments-table-wrapper">
           <table className="assignments-table">
             <thead>
               <tr>
                 <th>ID</th>
                 <th>Applicant</th>
+                <th>Position Applied</th>
                 <th>Team Lead</th>
                 <th>Assigned By</th>
                 <th>Assigned Date</th>
@@ -182,19 +171,15 @@ export default function AdminAssignmentsPage() {
                     <td>
                       <strong>{assignment.applicantName}</strong>
                     </td>
-                    <td>{assignment.tlEmail}</td>
+                    <td>{assignment.positionAppliedFor || '-'}</td>
+                    <td>{assignment.tlName || assignment.tlEmail}</td>
                     <td>{assignment.assignedBy}</td>
                     <td>{new Date(assignment.assignedDate).toLocaleDateString()}</td>
                     <td>
-                      <span className={`status-badge status-${assignment.status}`}>
-                        {assignment.status}
-                      </span>
+                      <span className={`status-badge status-${assignment.status}`}>{assignment.status}</span>
                     </td>
                     <td>
-                      {assignment.completionDate 
-                        ? new Date(assignment.completionDate).toLocaleDateString()
-                        : '—'
-                      }
+                      {assignment.completionDate ? new Date(assignment.completionDate).toLocaleDateString() : '-'}
                     </td>
                     <td>
                       <div className="action-buttons">
@@ -205,14 +190,14 @@ export default function AdminAssignmentsPage() {
                               className="btn-complete"
                               title="Mark Complete"
                             >
-                              ✓
+                              ?
                             </button>
                             <button
                               onClick={() => handleCancelAssignment(assignment.id)}
                               className="btn-cancel"
                               title="Cancel"
                             >
-                              ✗
+                              ×
                             </button>
                           </>
                         )}
@@ -221,7 +206,7 @@ export default function AdminAssignmentsPage() {
                           className="btn-delete"
                           title="Delete"
                         >
-                          🗑️
+                          Delete
                         </button>
                       </div>
                     </td>
@@ -229,7 +214,7 @@ export default function AdminAssignmentsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="empty-message">
+                  <td colSpan={9} className="empty-message">
                     No assignments found
                   </td>
                 </tr>
@@ -241,3 +226,4 @@ export default function AdminAssignmentsPage() {
     </div>
   )
 }
+
