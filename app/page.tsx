@@ -21,13 +21,6 @@ export default function LoginPage() {
     role: 'boss' | 'hr' | 'team-lead' | 'admin'
   }
 
-  const DEMO_USERS: LoginUser[] = [
-    { email: 'boss@constantinolawoffice.com', password: 'boss123', role: 'boss' },
-    { email: 'hr@constantinolawoffice.com', password: 'hr123', role: 'hr' },
-    { email: 'tl@constantinolawoffice.com', password: 'tl123', role: 'team-lead' },
-    { email: 'admin@constantinolawoffice.com', password: 'admin123', role: 'admin' },
-  ]
-
   const handleLogin = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
@@ -43,25 +36,7 @@ export default function LoginPage() {
     setTimeout(async () => {
       try {
         const storedUsers = (await getAllUsers()) as LoginUser[]
-        const mergedUsers: LoginUser[] = [...DEMO_USERS]
-
-      storedUsers.forEach((storedUser: LoginUser) => {
-        const existingIndex = mergedUsers.findIndex(
-          (demoUser) => normalizeEmail(demoUser.email) === normalizeEmail(storedUser.email)
-        )
-
-        if (existingIndex >= 0) {
-          mergedUsers[existingIndex] = {
-            ...mergedUsers[existingIndex],
-            ...storedUser,
-          }
-          return
-        }
-
-        mergedUsers.push(storedUser)
-      })
-
-        const user = mergedUsers.find(
+        const user = storedUsers.find(
           (u) => normalizeEmail(u.email) === normalizedEmail && u.password === password
         )
 
