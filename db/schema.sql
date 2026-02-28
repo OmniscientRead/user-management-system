@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS applicants (
   assignedTL VARCHAR(255) NULL,
   assignedUserId INT NULL,
   assignedDate VARCHAR(50) NULL,
+  hrIntroductionStatus VARCHAR(50) NULL,
+  hrIntroductionAt VARCHAR(50) NULL,
   approvedBy VARCHAR(255) NULL,
   approvedDate VARCHAR(50) NULL,
   rejectedBy VARCHAR(255) NULL,

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import Link from 'next/link'
@@ -34,10 +34,10 @@ export default function Sidebar({ role, userName }: SidebarProps) {
         { label: 'Results', href: '/dashboard/hr/results', icon: '📋' },
       ],
       'team-lead': [
-        { label: 'Dashboard', href: '/dashboard/team-lead', icon: 'D' },
-        { label: 'My Assignments', href: '/dashboard/team-lead/assignments', icon: 'A' },
+        { label: 'Dashboard', href: '/dashboard/team-lead', icon: '📊' },
+        { label: 'My Assignments', href: '/dashboard/team-lead/assignments', icon: '📋' },
         // Single manpower tab for team lead
-        { label: 'Manpower', href: '/dashboard/team-lead/manpower', icon: 'M' },
+        { label: 'Manpower', href: '/dashboard/team-lead/manpower', icon: '👥' },
       ],
       admin: [
         { label: 'Dashboard', href: '/dashboard/admin', icon: '📊' },
@@ -46,6 +46,7 @@ export default function Sidebar({ role, userName }: SidebarProps) {
         // Single manpower tab for admin (combines all manpower functions)
         { label: 'Manpower', href: '/dashboard/admin/manpower', icon: '👥' },
         { label: 'All Assignments', href: '/dashboard/admin/assignments', icon: '📋' },
+        { label: 'Audit Logs', href: '/dashboard/admin/audit', icon: '🔎' },
       ],
     }
 
@@ -111,3 +112,6 @@ export default function Sidebar({ role, userName }: SidebarProps) {
     </aside>
   )
 }
+
+
+

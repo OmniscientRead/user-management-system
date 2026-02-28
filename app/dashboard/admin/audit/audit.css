@@ -1,0 +1,129 @@
+.admin-audit-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  background-image: url('/logo.jpg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: 100%;
+  background-attachment: fixed;
+  position: relative;
+}
+
+.admin-audit-container::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.admin-audit-content {
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.admin-audit-content h1 {
+  font-size: 28px;
+  color: #333;
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.admin-audit-content .subtitle {
+  color: #666;
+  font-size: 14px;
+  margin: 0 0 24px;
+}
+
+.filters-bar {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 250px;
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #880808;
+  box-shadow: 0 0 0 3px rgba(136, 8, 8, 0.1);
+}
+
+.audit-table-wrapper {
+  background: white;
+  border-radius: 10px;
+  overflow-x: auto;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e0e0e0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+.audit-table th {
+  background: #f8f9fa;
+  padding: 14px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #e0e0e0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.audit-table td {
+  padding: 14px;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 13px;
+}
+
+.empty-message {
+  text-align: center;
+  color: #999;
+  padding: 40px !important;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .admin-audit-content {
+    padding: 20px;
+  }
+
+  .admin-audit-content h1 {
+    font-size: 24px;
+  }
+
+  .filters-bar {
+    flex-direction: column;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-audit-container {
+    background-attachment: scroll;
+  }
+}
