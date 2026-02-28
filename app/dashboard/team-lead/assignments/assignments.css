@@ -21,10 +21,17 @@
 
 .tl-assignments-table-wrapper {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .tl-assignments-table {
   min-width: 980px;
+}
+
+@media (max-width: 768px) {
+  .tl-assignments-table {
+    min-width: 760px;
+  }
 }
 
 .tl-assignments-table .btn-assign {

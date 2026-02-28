@@ -68,14 +68,14 @@ export default function HRManpowerPage() {
     setTimeout(() => setSuccessMessage(''), 3000)
   }
 
-  const handleViewPdf = (pdfData: string, fileName: string) => {
-    setSelectedPdf({ data: pdfData, name: fileName })
+  const handleViewPdf = (pdfUrl: string, fileName: string) => {
+    setSelectedPdf({ data: pdfUrl, name: fileName })
     setShowPdfModal(true)
   }
 
-  const handleDownloadPdf = (pdfData: string, fileName: string) => {
+  const handleDownloadPdf = (pdfUrl: string, fileName: string) => {
     const link = document.createElement('a')
-    link.href = pdfData
+    link.href = pdfUrl
     link.download = fileName
     document.body.appendChild(link)
     link.click()
@@ -167,13 +167,13 @@ export default function HRManpowerPage() {
                     <td>
                       <div className="pdf-actions">
                         <button
-                          onClick={() => handleViewPdf(request.pdfData, request.pdfFileName)}
+                          onClick={() => handleViewPdf(request.pdfUrl || request.pdfData, request.pdfFileName)}
                           className="btn-view-pdf"
                         >
                           📄 View
                         </button>
                         <button
-                          onClick={() => handleDownloadPdf(request.pdfData, request.pdfFileName)}
+                          onClick={() => handleDownloadPdf(request.pdfUrl || request.pdfData, request.pdfFileName)}
                           className="btn-download-pdf"
                         >
                           ⬇️ Download

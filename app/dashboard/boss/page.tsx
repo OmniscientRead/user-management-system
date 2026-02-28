@@ -17,8 +17,10 @@ interface Applicant {
   positionAppliedFor?: string
   collectionExperience: string
   referral: string
-  resumeData: string
-  pictureData: string
+  resumeData?: string
+  resumeUrl?: string
+  pictureData?: string
+  pictureUrl?: string
   status: 'pending' | 'approved' | 'rejected'
   addedDate: string
 }
@@ -85,8 +87,8 @@ export default function BossDashboard() {
     }
   }
 
-  const handleImageClick = (pictureData: string, name: string) => {
-    setSelectedImage({ src: pictureData, name })
+  const handleImageClick = (picture: string, name: string) => {
+    setSelectedImage({ src: picture, name })
   }
 
   const closeModal = () => {
@@ -132,12 +134,12 @@ export default function BossDashboard() {
               {pendingApplicants.map((applicant) => (
                 <div key={applicant.id} className="profile-card">
                   <div className="profile-card-header">
-                    {applicant.pictureData ? (
+                    {applicant.pictureData || applicant.pictureUrl ? (
                       <img
-                        src={applicant.pictureData}
+                        src={applicant.pictureData || applicant.pictureUrl}
                         alt={applicant.name}
                         className="profile-card-image clickable-image"
-                        onClick={() => handleImageClick(applicant.pictureData, applicant.name)}
+                        onClick={() => handleImageClick(applicant.pictureData || applicant.pictureUrl || '', applicant.name)}
                       />
                     ) : (
                       <div
@@ -189,7 +191,7 @@ export default function BossDashboard() {
                     </div>
 
                     <div className="profile-card-actions">
-                      <button onClick={() => openPdfInNewTab(applicant.resumeData)} className="btn-view-resume">
+                      <button onClick={() => openPdfInNewTab(applicant.resumeData || applicant.resumeUrl)} className="btn-view-resume">
                         View Resume
                       </button>
                     </div>

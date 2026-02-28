@@ -18,6 +18,25 @@ export interface AppData {
   applicants: any[]
   assignments: any[]
   manpowerRequests: any[]
+  sessions: Array<{
+    id: number
+    userId: number
+    token: string
+    createdAt: string
+    expiresAt: string
+  }>
+  auditLogs: Array<{
+    id: number
+    actorUserId: number
+    actorEmail: string
+    actorRole: string
+    action: string
+    entity: string
+    entityId: number | string
+    beforeData?: any
+    afterData?: any
+    createdAt: string
+  }>
   settings: {
     manPowerLimit: number
   }
@@ -47,6 +66,8 @@ const defaultData = (): AppData => ({
   applicants: [],
   assignments: [],
   manpowerRequests: [],
+  sessions: [],
+  auditLogs: [],
   settings: {
     manPowerLimit: 50,
   },

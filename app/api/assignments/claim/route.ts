@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readStore, writeStore } from '@/lib/server/data-store'
+import { getSessionUser } from '@/lib/server/auth'
+import { logAudit } from '@/lib/server/audit-log'
 import {
   isUsingMySql,
   getApplicants,
@@ -19,6 +21,12 @@ function nextId(items: any[]): number {
 
 export async function POST(req: NextRequest) {
   try {
+    const sessionUser = await getSessionUser(req)
+    if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (sessionUser.role !== 'team-lead' && sessionUser.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const body = await req.json()
     const applicantId = Number(body?.applicantId)
     const tlEmail = String(body?.tlEmail || '').trim()
@@ -114,20 +122,22 @@ export async function POST(req: NextRequest) {
         assignedDate: new Date().toISOString(),
       }
 
-      const assignment = await createAssignment({
-        applicantId: applicant.id,
-        applicantName: applicant.name,
-        age: applicant.age,
-        education: applicant.education,
-        course: applicant.course,
-        positionAppliedFor: applicant.positionAppliedFor || '',
-        collectionExperience: applicant.collectionExperience,
-        referral: applicant.referral,
-        pictureData: applicant.pictureData,
-        resumeData: applicant.resumeData,
-        tlEmail,
-        tlName: tlEmail.split('@')[0],
-        requestId: manpowerRequest.id,
+    const assignment = await createAssignment({
+      applicantId: applicant.id,
+      applicantName: applicant.name,
+      age: applicant.age,
+      education: applicant.education,
+      course: applicant.course,
+      positionAppliedFor: applicant.positionAppliedFor || '',
+      collectionExperience: applicant.collectionExperience,
+      referral: applicant.referral,
+      pictureData: applicant.pictureData,
+      pictureUrl: applicant.pictureUrl,
+      resumeData: applicant.resumeData,
+      resumeUrl: applicant.resumeUrl,
+      tlEmail,
+      tlName: tlEmail.split('@')[0],
+      requestId: manpowerRequest.id,
         assignedBy,
         assignedDate: new Date().toISOString(),
         status: 'active',
@@ -135,7 +145,8 @@ export async function POST(req: NextRequest) {
 
       await updateApplicant(applicant.id, updatedApplicant)
 
-      return NextResponse.json({ assignment, applicant: updatedApplicant })
+    await logAudit(sessionUser, 'assign', 'assignments', assignment.id, null, assignment)
+    return NextResponse.json({ assignment, applicant: updatedApplicant })
     }
 
     const store = await readStore()
@@ -214,21 +225,23 @@ export async function POST(req: NextRequest) {
     applicant.assignedTLName = tlEmail.split('@')[0]
     applicant.assignedDate = new Date().toISOString()
 
-    const assignment = {
-      id: nextId(store.assignments),
-      applicantId: applicant.id,
-      applicantName: applicant.name,
-      age: applicant.age,
-      education: applicant.education,
-      course: applicant.course,
-      positionAppliedFor: applicant.positionAppliedFor || '',
-      collectionExperience: applicant.collectionExperience,
-      referral: applicant.referral,
-      pictureData: applicant.pictureData,
-      resumeData: applicant.resumeData,
-      tlEmail,
-      tlName: tlEmail.split('@')[0],
-      requestId: manpowerRequest.id,
+  const assignment = {
+    id: nextId(store.assignments),
+    applicantId: applicant.id,
+    applicantName: applicant.name,
+    age: applicant.age,
+    education: applicant.education,
+    course: applicant.course,
+    positionAppliedFor: applicant.positionAppliedFor || '',
+    collectionExperience: applicant.collectionExperience,
+    referral: applicant.referral,
+    pictureData: applicant.pictureData,
+    pictureUrl: applicant.pictureUrl,
+    resumeData: applicant.resumeData,
+    resumeUrl: applicant.resumeUrl,
+    tlEmail,
+    tlName: tlEmail.split('@')[0],
+    requestId: manpowerRequest.id,
       assignedBy,
       assignedDate: new Date().toISOString(),
       status: 'active',
@@ -238,7 +251,8 @@ export async function POST(req: NextRequest) {
     store.assignments.push(assignment)
     await writeStore(store)
 
-    return NextResponse.json({ assignment, applicant })
+  await logAudit(sessionUser, 'assign', 'assignments', assignment.id, null, assignment)
+  return NextResponse.json({ assignment, applicant })
   } catch (error) {
     console.error('POST /api/assignments/claim error:', error)
     const message = error instanceof Error ? error.message : 'Unexpected server error'

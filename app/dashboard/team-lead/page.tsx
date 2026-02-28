@@ -22,7 +22,9 @@ interface Applicant {
   collectionExperience: string
   referral: string
   pictureData?: string
+  pictureUrl?: string
   resumeData?: string
+  resumeUrl?: string
   status: string
   assignedTL?: string
   assignedUserId?: number
@@ -152,13 +154,11 @@ export default function TeamLeadDashboard() {
 
       <div className="dashboard-content">
         <h1>Team Lead Dashboard</h1>
-        <p className="subtitle">Available applicants are shown below in profile cards. Assigned applicants are in My Assignments.</p>
 
         {message.text && <div className={`message-banner ${message.type}`}>{message.text}</div>}
 
         <div className="manpower-summary">
           <div className="summary-card total">
-            <div className="summary-icon">T</div>
             <div className="summary-info">
               <h3>Total Manpower</h3>
               <div className="summary-numbers">
@@ -169,18 +169,16 @@ export default function TeamLeadDashboard() {
           </div>
 
           <div className="summary-card requests">
-            <div className="summary-icon">A</div>
             <div className="summary-info">
               <h3>Active Assignments</h3>
               <div className="summary-numbers">
                 <span className="summary-value">{assignmentCount}</span>
                 <span className="summary-label">claimed</span>
               </div>
-            </div>
+            </div>  
           </div>
 
           <div className="summary-card pending">
-            <div className="summary-icon">P</div>
             <div className="summary-info">
               <h3>Pending Requests</h3>
               <div className="summary-numbers">
@@ -206,12 +204,12 @@ export default function TeamLeadDashboard() {
                 return (
                   <div key={applicant.id} className="applicant-card">
                     <div className="applicant-card-header">
-                      {applicant.pictureData ? (
+                      {applicant.pictureData || applicant.pictureUrl ? (
                         <img
-                          src={applicant.pictureData}
+                          src={applicant.pictureData || applicant.pictureUrl}
                           alt={applicant.name}
                           className="applicant-profile-pic clickable-image"
-                          onClick={() => setSelectedImage({ src: applicant.pictureData || '', name: applicant.name })}
+                          onClick={() => setSelectedImage({ src: applicant.pictureData || applicant.pictureUrl || '', name: applicant.name })}
                         />
                       ) : (
                         <div
@@ -235,9 +233,9 @@ export default function TeamLeadDashboard() {
                       </div>
 
                       <button
-                        onClick={() => openPdfInNewTab(applicant.resumeData)}
+                        onClick={() => openPdfInNewTab(applicant.resumeData || applicant.resumeUrl)}
                         className="btn-view-resume"
-                        disabled={!applicant.resumeData}
+                        disabled={!applicant.resumeData && !applicant.resumeUrl}
                       >
                         View Resume
                       </button>

@@ -30,7 +30,12 @@ export function getPdfObjectUrl(value?: string | null): string {
   const source = String(value || '').trim()
   if (!source) return ''
 
-  if (source.startsWith('blob:') || source.startsWith('http://') || source.startsWith('https://')) {
+  if (
+    source.startsWith('blob:') ||
+    source.startsWith('http://') ||
+    source.startsWith('https://') ||
+    source.startsWith('/')
+  ) {
     return source
   }
 

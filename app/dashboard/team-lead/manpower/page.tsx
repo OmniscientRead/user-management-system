@@ -28,7 +28,8 @@ type ManpowerRequest = {
   teamLeadName: string
   tlId: number | null
   pdfFileName: string
-  pdfData: string
+  pdfData?: string
+  pdfUrl?: string
 }
 
 export default function TeamLeadManpowerPage() {
@@ -112,6 +113,17 @@ export default function TeamLeadManpowerPage() {
     }))
   }
 
+  const uploadFile = async (file: File): Promise<string> => {
+    const form = new FormData()
+    form.append('file', file)
+    const response = await fetch('/api/uploads', { method: 'POST', body: form })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(body?.error || 'Failed to upload file')
+    }
+    return body.url
+  }
+
   const submitRequest = () => {
     if (!user) {
       alert('User session not found. Please login again.')
@@ -129,47 +141,37 @@ export default function TeamLeadManpowerPage() {
       return
     }
 
-    const reader = new FileReader()
+    uploadFile(formData.pdfFile)
+      .then(async (pdfUrl) => {
+        const newRequest: ManpowerRequest = {
+          id: Date.now(),
+          position: formData.position,
+          requestedCount,
+          approvedCount: 0,
+          assignedCount: 0,
+          limit: null,
+          status: 'pending',
+          date: new Date().toISOString().split('T')[0],
+          createdAt: new Date().toISOString(),
+          teamLeadEmail: user.email,
+          teamLeadName: user.email.split('@')[0],
+          tlId: user.id ?? null,
+          pdfFileName: formData.pdfFile?.name || 'request.pdf',
+          pdfUrl,
+        }
 
-    reader.onerror = () => {
-      alert('Failed to read PDF file. Please try again.')
-    }
-
-    reader.onload = async () => {
-      const pdfBase64 = typeof reader.result === 'string' ? reader.result : ''
-      if (!pdfBase64) {
-        alert('Invalid PDF data. Please try another file.')
-        return
-      }
-
-      const newRequest: ManpowerRequest = {
-        id: Date.now(),
-        position: formData.position,
-        requestedCount,
-        approvedCount: 0,
-        assignedCount: 0,
-        limit: null,
-        status: 'pending',
-        date: new Date().toISOString().split('T')[0],
-        createdAt: new Date().toISOString(),
-        teamLeadEmail: user.email,
-        teamLeadName: user.email.split('@')[0],
-        tlId: user.id ?? null,
-        pdfFileName: formData.pdfFile?.name || 'request.pdf',
-        pdfData: pdfBase64,
-      }
-
-      await addManpowerRequest(newRequest)
-      const allRequests = await getAllManpowerRequests()
-      const updatedTLRequests = allRequests.filter((req) => req.teamLeadEmail === user.email)
-      setManpowerRequests(updatedTLRequests)
-      setFormData({ position: '', requestedCount: '', pdfFile: null })
-      setShowForm(false)
-      setSuccessMessage('Manpower request submitted successfully!')
-      setTimeout(() => setSuccessMessage(''), 3000)
-    }
-
-    reader.readAsDataURL(formData.pdfFile)
+        await addManpowerRequest(newRequest)
+        const allRequests = await getAllManpowerRequests()
+        const updatedTLRequests = allRequests.filter((req) => req.teamLeadEmail === user.email)
+        setManpowerRequests(updatedTLRequests)
+        setFormData({ position: '', requestedCount: '', pdfFile: null })
+        setShowForm(false)
+        setSuccessMessage('Manpower request submitted successfully!')
+        setTimeout(() => setSuccessMessage(''), 3000)
+      })
+      .catch((error) => {
+        alert(error?.message || 'Failed to upload PDF file. Please try again.')
+      })
   }
 
   const handleSubmitRequest = (e: FormEvent<HTMLFormElement>) => {
@@ -375,6 +377,10 @@ export default function TeamLeadManpowerPage() {
                         href="#"
                         onClick={(e) => {
                           e.preventDefault()
+                          if (request.pdfUrl) {
+                            window.open(request.pdfUrl, '_blank', 'noopener,noreferrer')
+                            return
+                          }
                           alert(`PDF: ${request.pdfFileName}`)
                         }}
                         style={{ color: '#007bff', textDecoration: 'none' }}

@@ -2,7 +2,6 @@
 
 import { useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { getAllUsers } from '@/lib/db'
 import { COMPANY_EMAIL_ERROR, isAllowedCompanyEmail, normalizeEmail } from '@/lib/email-domain'
 import './login.css'
 
@@ -14,12 +13,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
 
   const router = useRouter()
-
-  type LoginUser = {
-    email: string
-    password?: string
-    role: 'boss' | 'hr' | 'team-lead' | 'admin'
-  }
 
   const handleLogin = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -35,28 +28,33 @@ export default function LoginPage() {
 
     setTimeout(async () => {
       try {
-        const storedUsers = (await getAllUsers()) as LoginUser[]
-        const user = storedUsers.find(
-          (u) => normalizeEmail(u.email) === normalizedEmail && u.password === password
-        )
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: normalizedEmail, password }),
+        })
 
-        if (user) {
-          // Cleanup legacy localStorage payloads from the pre-backend version.
-          localStorage.removeItem('users')
-          localStorage.removeItem('applicants')
-          localStorage.removeItem('assignments')
-          localStorage.removeItem('manpowerRequests')
-          localStorage.removeItem('manPowerLimit')
-
-          localStorage.setItem('user', JSON.stringify(user))
-          if (rememberMe) {
-            localStorage.setItem('rememberMe', JSON.stringify(user))
-          }
-          router.push(`/dashboard/${user.role}`)
-        } else {
-          setError('Invalid email or password')
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}))
+          setError(body?.error || 'Invalid email or password')
           setIsLoading(false)
+          return
         }
+
+        const user = await response.json()
+
+        // Cleanup legacy localStorage payloads from the pre-backend version.
+        localStorage.removeItem('users')
+        localStorage.removeItem('applicants')
+        localStorage.removeItem('assignments')
+        localStorage.removeItem('manpowerRequests')
+        localStorage.removeItem('manPowerLimit')
+
+        localStorage.setItem('user', JSON.stringify(user))
+        if (rememberMe) {
+          localStorage.setItem('rememberMe', JSON.stringify(user))
+        }
+        router.push(`/dashboard/${user.role}`)
       } catch (error) {
         console.error('Login error:', error)
         setError('Login failed. Please try again.')

@@ -146,7 +146,7 @@ export default function HRDashboard() {
                       <td>{applicant.addedDate}</td>
                       <td>
                         <button
-                          onClick={() => openPdfInNewTab(applicant.resumeData)}
+                          onClick={() => openPdfInNewTab(applicant.resumeData || applicant.resumeUrl)}
                           className="btn-view-resume"
                         >
                           📄 View
@@ -214,7 +214,7 @@ export default function HRDashboard() {
                         </td>
                         <td>
                           <button
-                            onClick={() => openPdfInNewTab(applicant.resumeData)}
+                            onClick={() => openPdfInNewTab(applicant.resumeData || applicant.resumeUrl)}
                             className="btn-view-resume"
                           >
                             📄 View
@@ -271,7 +271,7 @@ export default function HRDashboard() {
                       </td>
                       <td>
                         <button
-                          onClick={() => openPdfInNewTab(applicant.resumeData)}
+                          onClick={() => openPdfInNewTab(applicant.resumeData || applicant.resumeUrl)}
                           className="btn-view-resume"
                         >
                           📄 View

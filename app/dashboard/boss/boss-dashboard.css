@@ -1480,3 +1480,21 @@
   padding: 30px !important;
   font-style: italic;
 }
+
+/* Responsive fixes */
+.dashboard-content {
+  min-width: 0;
+}
+
+.table-wrapper,
+.assignments-table-wrapper {
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    height: auto;
+    min-height: 100vh;
+    background-attachment: scroll;
+  }
+}

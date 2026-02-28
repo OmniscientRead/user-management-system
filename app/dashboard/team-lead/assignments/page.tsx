@@ -21,6 +21,7 @@ interface Assignment {
   assignedDate: string
   status?: string
   resumeData?: string
+  resumeUrl?: string
 }
 
 export default function TeamLeadAssignmentsPage() {
@@ -108,10 +109,10 @@ export default function TeamLeadAssignmentsPage() {
                       <td>{assignment.referral || '-'}</td>
                       <td>{new Date(assignment.assignedDate).toLocaleDateString()}</td>
                       <td>
-                        {assignment.resumeData ? (
+                        {assignment.resumeData || assignment.resumeUrl ? (
                           <button
                             className="btn-view-resume-small"
-                            onClick={() => openPdfInNewTab(assignment.resumeData)}
+                            onClick={() => openPdfInNewTab(assignment.resumeData || assignment.resumeUrl)}
                           >
                             View
                           </button>

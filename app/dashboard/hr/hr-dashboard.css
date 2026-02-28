@@ -30,6 +30,7 @@
   padding: 40px;
   position: relative;
   z-index: 1;
+  min-width: 0;
 }
 
 .dashboard-content h1 {
@@ -124,6 +125,7 @@
   overflow-x: auto;
   margin-bottom: 30px;
   border: 1px solid #f0f0f0;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Applicants Table */
@@ -787,6 +789,10 @@
   .pdf-modal {
     width: 95%;
     height: 70vh;
+  }
+
+  .dashboard-container {
+    background-attachment: scroll;
   }
 }
 

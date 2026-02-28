@@ -95,6 +95,17 @@ export default function AddApplicantPage() {
     }
   }
 
+  const uploadFile = async (file: File): Promise<string> => {
+    const form = new FormData()
+    form.append('file', file)
+    const response = await fetch('/api/uploads', { method: 'POST', body: form })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(body?.error || 'Failed to upload file')
+    }
+    return body.url
+  }
+
   const submitApplicant = () => {
     setIsSubmitting(true)
 
@@ -115,18 +126,8 @@ export default function AddApplicantPage() {
       return
     }
 
-    // Convert files to base64 using Promises
-    const readFile = (file) => {
-      return new Promise((resolve) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result)
-        reader.readAsDataURL(file)
-      })
-    }
-
-    // Read both files and then save
-    Promise.all([readFile(formData.resume), readFile(formData.picture)])
-      .then(([resumeData, pictureData]) => {
+    Promise.all([uploadFile(formData.resume), uploadFile(formData.picture)])
+      .then(([resumeUrl, pictureUrl]) => {
         // Create new applicant object
         const newApplicant = {
           id: Date.now(),
@@ -138,9 +139,9 @@ export default function AddApplicantPage() {
           collectionExperience: formData.collectionExperience,
           referral: formData.referral,
           resumeFileName: formData.resume.name,
-          resumeData: resumeData,
+          resumeUrl,
           pictureFileName: formData.picture.name,
-          pictureData: pictureData,
+          pictureUrl,
           status: 'pending',
           addedDate: new Date().toISOString().split('T')[0],
           addedBy: user.email,

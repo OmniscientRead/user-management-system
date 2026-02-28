@@ -29,6 +29,7 @@
   padding: 40px;
   position: relative;
   z-index: 1;
+  min-width: 0;
 }
 
 .dashboard-content h1 {
@@ -366,6 +367,12 @@
   .limit-display {
     justify-content: center;
   }
+
+  .dashboard-container {
+    height: auto;
+    min-height: 100vh;
+    background-attachment: scroll;
+  }
 }
 /* Clickable Image Styles */
 .clickable-image,
@@ -407,6 +414,7 @@
   border-radius: 8px;
   overflow-x: auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  -webkit-overflow-scrolling: touch;
 }
 
 .assignments-table {

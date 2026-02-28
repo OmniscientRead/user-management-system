@@ -28,8 +28,10 @@ interface Applicant {
   positionAppliedFor?: string
   collectionExperience: string
   referral: string
-  resumeData: string
-  pictureData: string
+  resumeData?: string
+  resumeUrl?: string
+  pictureData?: string
+  pictureUrl?: string
   status: 'pending' | 'approved' | 'rejected' | 'assigned'
   addedDate: string
   assignedTL?: string
@@ -200,13 +202,16 @@ export default function AdminApplicantsPage() {
     setFormData((prev) => ({ ...prev, picture: file }))
   }
 
-  const fileToBase64 = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(String(reader.result || ''))
-      reader.onerror = () => reject(reader.error)
-      reader.readAsDataURL(file)
-    })
+  const uploadFile = async (file: File): Promise<string> => {
+    const form = new FormData()
+    form.append('file', file)
+    const response = await fetch('/api/uploads', { method: 'POST', body: form })
+    const body = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(body?.error || 'Failed to upload file')
+    }
+    return body.url
+  }
 
   const handleAddApplicant = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -236,9 +241,9 @@ export default function AdminApplicantsPage() {
         variant: 'default',
         onConfirm: async () => {
           setConfirmState((prev) => ({ ...prev, open: false }))
-          const [resumeData, pictureData] = await Promise.all([
-            fileToBase64(formData.resume),
-            fileToBase64(formData.picture),
+          const [resumeUrl, pictureUrl] = await Promise.all([
+            uploadFile(formData.resume),
+            uploadFile(formData.picture),
           ])
 
           await addApplicant({
@@ -250,8 +255,8 @@ export default function AdminApplicantsPage() {
             positionAppliedFor: formData.positionAppliedFor,
             collectionExperience: formData.collectionExperience,
             referral: formData.referral,
-            resumeData,
-            pictureData,
+            resumeUrl,
+            pictureUrl,
             status: 'pending',
             addedDate: new Date().toISOString().split('T')[0],
             addedBy: user?.email,
@@ -286,7 +291,8 @@ export default function AdminApplicantsPage() {
   }
 
   useEffect(() => {
-    if (!showResume || !selectedApplicant?.resumeData) {
+    const resumeSource = selectedApplicant?.resumeData || selectedApplicant?.resumeUrl || ''
+    if (!showResume || !resumeSource) {
       if (resumeUrl.startsWith('blob:')) {
         URL.revokeObjectURL(resumeUrl)
       }
@@ -294,7 +300,7 @@ export default function AdminApplicantsPage() {
       return
     }
 
-    const nextUrl = getPdfObjectUrl(selectedApplicant.resumeData)
+    const nextUrl = getPdfObjectUrl(resumeSource)
     if (resumeUrl.startsWith('blob:')) {
       URL.revokeObjectURL(resumeUrl)
     }
@@ -304,7 +310,7 @@ export default function AdminApplicantsPage() {
         URL.revokeObjectURL(nextUrl)
       }
     }
-  }, [showResume, selectedApplicant?.resumeData])
+  }, [showResume, selectedApplicant?.resumeData, selectedApplicant?.resumeUrl])
 
   const filteredApplicants = applicants.filter((a) => {
     const matchesSearch =
@@ -471,8 +477,8 @@ export default function AdminApplicantsPage() {
                 filteredApplicants.map((applicant) => (
                   <tr key={applicant.id}>
                     <td>
-                      {applicant.pictureData ? (
-                        <img src={applicant.pictureData} alt={applicant.name} className="applicant-thumb" />
+                      {applicant.pictureData || applicant.pictureUrl ? (
+                        <img src={applicant.pictureData || applicant.pictureUrl} alt={applicant.name} className="applicant-thumb" />
                       ) : (
                         <div className="applicant-initials">
                           {applicant.name
@@ -571,7 +577,7 @@ export default function AdminApplicantsPage() {
                 </button>
               </div>
               <div className="modal-body">
-                {selectedApplicant.resumeData ? (
+                {resumeUrl ? (
                   <iframe src={resumeUrl} className="resume-viewer" title="Resume" />
                 ) : (
                   <div className="no-resume">No resume uploaded</div>

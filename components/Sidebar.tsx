@@ -55,7 +55,9 @@ export default function Sidebar({ role, userName }: SidebarProps) {
   // Handle logout
   const handleLogout = () => {
     localStorage.removeItem('user')
-    router.push('/')
+    fetch('/api/auth/logout', { method: 'POST' }).finally(() => {
+      router.push('/')
+    })
   }
 
   const menuItems = getMenuItems()

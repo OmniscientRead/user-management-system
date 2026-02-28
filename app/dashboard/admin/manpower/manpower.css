@@ -25,6 +25,7 @@
   overflow-y: auto;
   position: relative;
   z-index: 1;
+  min-width: 0;
 }
 
 .admin-manpower-content h1 {
@@ -385,6 +386,7 @@
 /* Requests Table */
 .requests-table-container {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .requests-table {
@@ -699,6 +701,12 @@
   .btn-reject,
   .btn-delete {
     min-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-manpower-container {
+    background-attachment: scroll;
   }
 }
 

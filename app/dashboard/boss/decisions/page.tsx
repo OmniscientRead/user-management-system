@@ -179,7 +179,7 @@ export default function BossDecisionsPage() {
                     <td>{decision.addedDate}</td>
                     <td>
                       <button
-                        onClick={() => openPdfInNewTab(decision.resumeData)}
+                        onClick={() => openPdfInNewTab(decision.resumeData || decision.resumeUrl)}
                         className="btn-view-resume"
                       >
                         View
